@@ -1,13 +1,12 @@
 """
-Security and Secret Redaction Tests.
+Section 1: Security and Secret Redaction Tests.
 Proves that sentinel keys never appear in logs or responses.
 """
 import io
 import logging
 from fastapi.testclient import TestClient
 
-from app.utils.security import (
-    active_secrets,
+from app.section1_foundation_and_providers.security.security import (
     register_secret,
     redact_text,
     SecretRedactingLoggingFilter,
@@ -68,7 +67,6 @@ def test_validation_error_drops_input(client: TestClient, sentinel_key: str):
     Verify that FastAPI RequestValidationError handler drops the 'input' field,
     guaranteeing that invalid payloads with sensitive values never echo them back.
     """
-    # Send invalid type for request fields with sentinel key embedded in payload
     payload = {
         "provider": 12345,  # Invalid: expected string
         "model": "llama-3.3-70b-versatile",
@@ -85,11 +83,9 @@ def test_validation_error_drops_input(client: TestClient, sentinel_key: str):
     data = response.json()
     assert "detail" in data
     
-    # Inspect all error items in detail
     for error_item in data["detail"]:
         assert "input" not in error_item, "Validation error must never contain 'input' field!"
     
-    # Entire response string must never contain sentinel key
     assert sentinel_key not in response.text
 
 
@@ -103,14 +99,12 @@ def test_sentinel_never_in_provider_failure_response(client: TestClient, sentine
         "model": "llama-3.3-70b-versatile",
     }
     
-    # Send a sentinel key that will fail auth against upstream mock/real endpoint
     response = client.post(
         "/settings/test",
         json=payload,
         headers={"X-LLM-Key": sentinel_key},
     )
     
-    # Sentinel key must NEVER be echoed anywhere in response body or headers
     assert sentinel_key not in response.text
     for header_name, header_val in response.headers.items():
         assert sentinel_key not in header_val
@@ -118,17 +112,14 @@ def test_sentinel_never_in_provider_failure_response(client: TestClient, sentine
 
 def test_sanitize_url_validation():
     """Verify HTTP/HTTPS enforcement, loopback/private IP rejection, and non-web scheme rejection."""
-    # Valid URLs
     assert sanitize_url("https://jobs.lever.co/company/job-id") == "https://jobs.lever.co/company/job-id"
     assert sanitize_url("http://example.com/apply") == "http://example.com/apply"
     
-    # Invalid schemes
     assert sanitize_url("javascript:alert(1)") is None
     assert sanitize_url("file:///etc/passwd") is None
     assert sanitize_url("ftp://server.com/job") is None
     assert sanitize_url("data:text/html,<script>") is None
 
-    # Internal / private hostnames
     assert sanitize_url("http://localhost:8000/apply") is None
     assert sanitize_url("http://127.0.0.1:8000/apply") is None
     assert sanitize_url("http://0.0.0.0:8000/apply") is None
@@ -137,6 +128,5 @@ def test_sanitize_url_validation():
     assert sanitize_url("http://10.0.0.1/apply") is None
     assert sanitize_url("http://169.254.169.254/latest/meta-data") is None
 
-    # Empty / None
     assert sanitize_url("") is None
     assert sanitize_url(None) is None

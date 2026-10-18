@@ -1,18 +1,21 @@
 """
-Upload router: In-memory resume text extraction and LLM parsing with SSE streaming.
+Section 2: Upload router streaming in-memory extraction and LLM parsing over SSE.
 """
 import asyncio
-import json
 import logging
 from typing import AsyncGenerator, Optional
-from fastapi import APIRouter, File, Form, Header, UploadFile, status
+from fastapi import APIRouter, File, Form, Header, UploadFile
 from fastapi.responses import StreamingResponse
 
-from app.providers.base import LLMProviderError
-from app.providers.registry import get_provider
-from app.schemas.sse import SSEEvent, SSEEventType
-from app.services.parsing import ParsingError, extract_resume_text, parse_resume_with_llm
-from app.utils.security import register_secret
+from app.section1_foundation_and_providers.providers.base import LLMProviderError
+from app.section1_foundation_and_providers.providers.registry import get_provider
+from app.section1_foundation_and_providers.schemas.sse import SSEEvent, SSEEventType
+from app.section1_foundation_and_providers.security.security import register_secret
+from app.section2_parsing_and_upload.services.parsing import (
+    ParsingError,
+    extract_resume_text,
+    parse_resume_with_llm,
+)
 
 router = APIRouter(prefix="/upload", tags=["upload"])
 logger = logging.getLogger(__name__)

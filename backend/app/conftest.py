@@ -1,13 +1,11 @@
 """
-Pytest configuration, shared fixtures, and mocked providers.
+Central Pytest configuration and shared fixtures for all sections.
 """
 import pytest
-from typing import AsyncGenerator
-import httpx
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.providers.base import LLMProvider
+from app.section1_foundation_and_providers.providers.base import LLMProvider
 
 
 class MockLLMProvider(LLMProvider):

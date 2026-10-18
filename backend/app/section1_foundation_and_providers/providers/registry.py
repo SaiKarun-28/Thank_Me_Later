@@ -1,5 +1,5 @@
 """
-Declarative Provider Registry and Factory.
+Declarative Provider Registry and Factory for Section 1.
 Adding a new provider is a single registry entry.
 """
 from dataclasses import dataclass
@@ -7,10 +7,10 @@ import re
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
-from app.providers.base import LLMProvider, LLMProviderError
-from app.providers.gemini import GeminiProvider
-from app.providers.openai_compat import OpenAICompatProvider
-from app.schemas.settings import ProviderInfo
+from app.section1_foundation_and_providers.providers.base import LLMProvider, LLMProviderError
+from app.section1_foundation_and_providers.providers.gemini import GeminiProvider
+from app.section1_foundation_and_providers.providers.openai_compat import OpenAICompatProvider
+from app.section1_foundation_and_providers.schemas.settings import ProviderInfo
 
 # Safe model name validation regex: alphanumeric, underscores, hyphens, periods, colons, slashes, up to 64 chars
 SAFE_MODEL_REGEX = re.compile(r"^[a-zA-Z0-9_\-.:/]{1,64}$")

@@ -109,7 +109,6 @@ class LLMProvider(ABC):
                         attempt + 1,
                         self.name,
                     )
-                    # Add backoff and reinforce JSON constraint
                     await asyncio.sleep(1.0)
                     current_prompt = (
                         f"{prompt}\n\nIMPORTANT: Your previous response was not valid JSON. "

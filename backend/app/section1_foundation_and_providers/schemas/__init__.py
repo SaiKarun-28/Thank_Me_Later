@@ -1,8 +1,8 @@
 """
-Pydantic Schemas for Thank Me Later.
+Section 1 Schemas.
 """
-from app.schemas.sse import SSEEvent, SSEEventType
-from app.schemas.resume import (
+from app.section1_foundation_and_providers.schemas.sse import SSEEvent, SSEEventType
+from app.section1_foundation_and_providers.schemas.resume import (
     TargetRole,
     ContactInfo,
     ExperienceItem,
@@ -12,14 +12,14 @@ from app.schemas.resume import (
     SearchProfile,
     calculate_default_experience_level,
 )
-from app.schemas.job import (
+from app.section1_foundation_and_providers.schemas.job import (
     JobPosting,
     RankedJob,
     SourceStatus,
     JobSourceConfig,
     SearchJobsRequest,
 )
-from app.schemas.settings import (
+from app.section1_foundation_and_providers.schemas.settings import (
     TestSettingsRequest,
     TestSettingsResponse,
     ProviderInfo,

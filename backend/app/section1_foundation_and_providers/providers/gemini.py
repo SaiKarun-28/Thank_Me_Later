@@ -1,12 +1,12 @@
 """
-Google Gemini API Provider.
+Google Gemini API Provider for Section 1.
 Strictly sends API Key via 'x-goog-api-key' header, never in URL parameters.
 """
 import time
 from typing import Any, Dict, Optional
 import httpx
 
-from app.providers.base import LLMProvider, LLMProviderError
+from app.section1_foundation_and_providers.providers.base import LLMProvider, LLMProviderError
 
 
 class GeminiProvider(LLMProvider):

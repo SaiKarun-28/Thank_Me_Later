@@ -1,6 +1,7 @@
 """
 FastAPI application entry point for Thank Me Later.
 Stateless, BYOK architecture with strict secret redaction and CORS lock.
+Organized into section-wise modules.
 """
 import os
 from contextlib import asynccontextmanager
@@ -10,17 +11,18 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.routers import settings, upload
-from app.utils.exceptions import (
+from app.section1_foundation_and_providers.routers.settings import router as settings_router
+from app.section1_foundation_and_providers.security.exceptions import (
     generic_exception_handler,
     http_exception_handler,
     validation_exception_handler,
 )
-from app.utils.security import (
+from app.section1_foundation_and_providers.security.security import (
     active_secrets,
     configure_secure_logging,
     register_secret,
 )
+from app.section2_parsing_and_upload.routers.upload import router as upload_router
 
 
 @asynccontextmanager
@@ -69,9 +71,9 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
-# Register routers
-app.include_router(settings.router)
-app.include_router(upload.router)
+# Register section routers
+app.include_router(settings_router)
+app.include_router(upload_router)
 
 
 @app.get("/health", tags=["system"])

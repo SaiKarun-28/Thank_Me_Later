@@ -1,5 +1,5 @@
 """
-In-memory resume file validation, extraction, hardening, and LLM parsing.
+Section 2: In-memory resume file validation, extraction, hardening, and LLM parsing.
 Stateless: All files processed purely in memory. Zero disk persistence.
 """
 import asyncio
@@ -10,8 +10,8 @@ import zipfile
 import docx
 import pdfplumber
 
-from app.providers.base import LLMProvider, LLMProviderError
-from app.schemas.resume import ParsedProfile
+from app.section1_foundation_and_providers.providers.base import LLMProvider, LLMProviderError
+from app.section1_foundation_and_providers.schemas.resume import ParsedProfile
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,6 @@ def extract_docx_sync(file_bytes: bytes) -> str:
     try:
         doc = docx.Document(io.BytesIO(file_bytes))
         paragraphs = [p.text for p in doc.paragraphs if p.text]
-        # Also extract table text if present
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
@@ -120,7 +119,6 @@ async def extract_resume_text(file_bytes: bytes) -> str:
     validate_file_size(file_bytes)
     file_type = detect_file_type(file_bytes)
 
-    # Offload blocking CPU extraction to thread pool with 10s timeout
     try:
         if file_type == "pdf":
             extracted = await asyncio.wait_for(
@@ -138,7 +136,6 @@ async def extract_resume_text(file_bytes: bytes) -> str:
             status_code=504,
         )
 
-    # Empty / scanned document check
     if not extracted or len(extracted.strip()) < MIN_TEXT_LENGTH:
         raise ParsingError(
             "The document contains insufficient readable text (under 50 characters). "
@@ -231,15 +228,12 @@ async def parse_resume_with_llm(
 
     data = await provider.json_completion(prompt=prompt, system_prompt=system_prompt)
 
-    # Normalize fields if LLM omitted some optional keys
     try:
         profile = ParsedProfile.model_validate(data)
-        # Store full raw text in ParsedProfile for client reference only
         profile.raw_text = resume_text
         return profile
     except Exception as e:
         logger.warning("Pydantic validation of LLM output failed: %s. Attempting fallback mapping.", str(e))
-        # Build resilient fallback profile from whatever data was extracted
         return ParsedProfile(
             name=str(data.get("name") or "Candidate"),
             skills=[str(s) for s in data.get("skills", []) if s],

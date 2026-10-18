@@ -3,7 +3,7 @@ Job and Ranking Data Models.
 """
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
-from app.schemas.resume import SearchProfile
+from app.section1_foundation_and_providers.schemas.resume import SearchProfile
 
 
 class JobPosting(BaseModel):

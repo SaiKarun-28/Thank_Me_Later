@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.utils.security import redact_text
+from app.section1_foundation_and_providers.security.security import redact_text
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:

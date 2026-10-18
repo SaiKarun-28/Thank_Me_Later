@@ -1,18 +1,18 @@
 """
-Settings router: Test connection and metadata.
+Settings router: Test connection and metadata for Section 1.
 """
 from typing import List, Optional
 from fastapi import APIRouter, Header, HTTPException, status
 import logging
 
-from app.providers.base import LLMProviderError
-from app.providers.registry import ProviderRegistry, get_provider
-from app.schemas.settings import (
+from app.section1_foundation_and_providers.providers.base import LLMProviderError
+from app.section1_foundation_and_providers.providers.registry import ProviderRegistry, get_provider
+from app.section1_foundation_and_providers.schemas.settings import (
     ProviderInfo,
     TestSettingsRequest,
     TestSettingsResponse,
 )
-from app.utils.security import register_secret
+from app.section1_foundation_and_providers.security.security import register_secret
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 logger = logging.getLogger(__name__)
