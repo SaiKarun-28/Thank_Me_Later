@@ -1,5 +1,7 @@
 # Thank Me Later — Stage 1: Resume-to-Job Matcher
 
+BYOK job matcher: parses your resume, finds the top 20 roles across public job boards, and tailors your resume to each one. Thank me later.
+
 A high-performance, privacy-first web application that matches candidates to job openings across 7 platforms using user-provided LLM keys (BYOK) and hybrid ranking.
 
 Built with **Zero Backend Persistence**: Resumes, parsed profiles, raw text, and API keys are **never** stored on disk, SQLite, Redis, or any database. All processing occurs ephemerally in RAM.
@@ -138,3 +140,4 @@ npm run build
 ## License & Privacy
 
 This project is licensed under the MIT License. Resumes, candidate data, and user API keys are never persisted or shared.
+
