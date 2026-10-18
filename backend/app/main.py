@@ -67,7 +67,7 @@ app.add_middleware(
     allow_origin_regex=cors_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "X-LLM-Key", "Authorization", "Accept"],
+    allow_headers=["*"],
 )
 
 # Exception handlers ensuring zero secret or input leakage

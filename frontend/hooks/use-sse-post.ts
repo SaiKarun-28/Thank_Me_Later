@@ -30,7 +30,16 @@ export function useSSEPost() {
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
       while (true) { const { done, value } = await reader.read(); if (done) break; buffer = consume(buffer + decoder.decode(value, { stream: true }), options.handlers); }
       if (buffer.trim()) consume(`${buffer}\n\n`, options.handlers);
-    } catch (reason) { if ((reason as DOMException).name !== 'AbortError') { const message = reason instanceof Error ? reason.message : 'Unexpected network error.'; setError(message); options.handlers.error?.({ message }); } }
+    } catch (reason) {
+      if ((reason as DOMException).name !== 'AbortError') {
+        const raw = reason instanceof Error ? reason.message : 'Unexpected network error.';
+        const message = raw === 'Failed to fetch'
+          ? `Cannot reach backend at ${url}. If using Render free tier, the server may be waking from sleep (~40s). Please check your backend URL and click Retry.`
+          : raw;
+        setError(message);
+        options.handlers.error?.({ message });
+      }
+    }
     finally { setIsStreaming(false); }
   }, []);
   return { post, abort, isStreaming, error };

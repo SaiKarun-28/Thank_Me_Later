@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, KeyRound, LoaderCircle, Save, ShieldCheck, Wifi } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Globe, KeyRound, LoaderCircle, Save, ShieldCheck, Wifi } from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { MotionButton } from '@/components/motion-button';
 import { PrivacyModal } from '@/components/privacy-modal';
@@ -23,8 +23,12 @@ export default function SettingsPage() {
   const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [showWarning, setShowWarning] = useState(false);
+  const [customApiUrl, setCustomApiUrl] = useState('');
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCustomApiUrl(localStorage.getItem('tml_custom_api_url') || '');
+    }
     setSettings(getSettings());
     fetch(apiUrl('/settings/providers'))
       .then(async r => {
@@ -298,6 +302,39 @@ export default function SettingsPage() {
           <p className="mt-1 text-sm text-black/55 dark:text-white/55">Only sources you configure will be searched.</p>
           <div className="mt-5">
             <SourceForm value={settings.sources} onChange={sources => update('sources', sources)} />
+          </div>
+        </section>
+
+        {/* Backend API Configuration */}
+        <section className="surface mt-6 p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <Globe className="mt-0.5 text-blue-600 dark:text-blue-400" size={20} />
+            <div className="w-full">
+              <h2 className="font-semibold">Backend API Endpoint</h2>
+              <p className="mt-1 text-sm leading-6 text-black/55 dark:text-white/55">
+                Set or verify your live Render backend URL. Useful if your environment variable hasn&apos;t refreshed yet.
+              </p>
+              <input
+                className="field mt-3 font-mono text-sm w-full"
+                type="url"
+                value={customApiUrl}
+                onChange={e => {
+                  const val = e.target.value;
+                  setCustomApiUrl(val);
+                  if (typeof window !== 'undefined') {
+                    if (val.trim()) {
+                      localStorage.setItem('tml_custom_api_url', val.trim());
+                    } else {
+                      localStorage.removeItem('tml_custom_api_url');
+                    }
+                  }
+                }}
+                placeholder="https://thank-me-later-backend.onrender.com"
+              />
+              <p className="mt-1.5 text-xs text-black/45 dark:text-white/45">
+                Current active endpoint: <span className="font-mono text-blue-600 dark:text-blue-400">{apiUrl('')}</span>
+              </p>
+            </div>
           </div>
         </section>
 
