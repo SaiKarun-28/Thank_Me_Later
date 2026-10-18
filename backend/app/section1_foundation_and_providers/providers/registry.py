@@ -13,7 +13,7 @@ from app.section1_foundation_and_providers.providers.openai_compat import OpenAI
 from app.section1_foundation_and_providers.schemas.settings import ProviderInfo
 
 # Safe model name validation regex: alphanumeric, underscores, hyphens, periods, colons, slashes, up to 64 chars
-SAFE_MODEL_REGEX = re.compile(r"^[a-zA-Z0-9_\-.:/]{1,64}$")
+SAFE_MODEL_REGEX = re.compile(r"^[a-zA-Z0-9_\-.:/@]{1,64}$")
 
 
 @dataclass(frozen=True)
@@ -35,8 +35,15 @@ PROVIDER_REGISTRY: Dict[str, ProviderDescriptor] = {
         name="Google Gemini",
         adapter="gemini",
         default_base_url="https://generativelanguage.googleapis.com/v1beta",
-        default_model="gemini-1.5-flash",
-        available_models=["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"],
+        default_model="gemini-2.5-flash",
+        available_models=[
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+        ],
         requires_key=True,
         allows_custom_url=False,
     ),
@@ -49,7 +56,23 @@ PROVIDER_REGISTRY: Dict[str, ProviderDescriptor] = {
         available_models=[
             "llama-3.3-70b-versatile",
             "llama-3.1-8b-instant",
+            "deepseek-r1-distill-llama-70b",
             "mixtral-8x7b-32768",
+        ],
+        requires_key=True,
+        allows_custom_url=False,
+    ),
+    "openai": ProviderDescriptor(
+        id="openai",
+        name="OpenAI",
+        adapter="openai_compat",
+        default_base_url="https://api.openai.com/v1",
+        default_model="gpt-4o-mini",
+        available_models=[
+            "gpt-4o-mini",
+            "gpt-4o",
+            "o3-mini",
+            "gpt-4-turbo",
         ],
         requires_key=True,
         allows_custom_url=False,
@@ -62,9 +85,10 @@ PROVIDER_REGISTRY: Dict[str, ProviderDescriptor] = {
         default_model="meta-llama/llama-3.3-70b-instruct",
         available_models=[
             "meta-llama/llama-3.3-70b-instruct",
-            "google/gemini-2.0-flash-exp:free",
+            "google/gemini-2.5-flash",
+            "anthropic/claude-3.5-sonnet",
+            "deepseek/deepseek-r1",
             "mistralai/mistral-7b-instruct:free",
-            "anthropic/claude-3.5-haiku",
         ],
         requires_key=True,
         allows_custom_url=False,

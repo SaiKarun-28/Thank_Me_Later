@@ -61,13 +61,15 @@ async def test_llm_connection(
         )
     except LLMProviderError as e:
         logger.warning("Provider test failed for %s: %s", request.provider, e.message)
-        raise HTTPException(
-            status_code=e.status_code,
-            detail=e.message,
+        return TestSettingsResponse(
+            success=False,
+            message=e.message,
+            model=request.model,
         )
     except Exception as e:
         logger.error("Unexpected error during provider test for %s: %s", request.provider, str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to complete connection test.",
+        return TestSettingsResponse(
+            success=False,
+            message=f"Failed to complete connection test: {str(e)}",
+            model=request.model,
         )
