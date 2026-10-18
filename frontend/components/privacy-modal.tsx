@@ -1,0 +1,10 @@
+'use client';
+
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AlertTriangle, X } from 'lucide-react';
+import { MotionButton } from './motion-button';
+
+export function PrivacyModal({ open, onCancel, onConfirm }: { open: boolean; onCancel: () => void; onConfirm: () => void }) {
+  const reduced = useReducedMotion();
+  return <AnimatePresence>{open && <motion.div className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><motion.section role="dialog" aria-modal="true" aria-labelledby="storage-warning-title" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900" initial={reduced ? { opacity: 0 } : { opacity: 0, scale: .96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={reduced ? { opacity: 0 } : { opacity: 0, scale: .96, y: 10 }} transition={{ type: 'spring', duration: .35, bounce: 0 }}><div className="mb-4 flex items-start justify-between"><span className="grid size-10 place-items-center rounded-full bg-amber-100 text-amber-700"><AlertTriangle size={20} /></span><button onClick={onCancel} aria-label="Close warning" className="rounded-lg p-1 text-black/50 hover:bg-black/5 dark:text-white/50 dark:hover:bg-white/10"><X size={20} /></button></div><h2 id="storage-warning-title" className="text-xl font-semibold tracking-tight">Store credentials on this device?</h2><p className="mt-2 text-sm leading-6 text-black/65 dark:text-white/65">Local storage persists after you close this tab. Anyone with access to this browser profile could retrieve your API key and resume state.</p><p className="mt-2 text-sm leading-6 text-black/65 dark:text-white/65">Session storage is the safer default and clears when this tab closes.</p><div className="mt-6 flex justify-end gap-3"><MotionButton variant="secondary" onClick={onCancel}>Keep session-only</MotionButton><MotionButton onClick={onConfirm}>Use local storage</MotionButton></div></motion.section></motion.div>}</AnimatePresence>;
+}
