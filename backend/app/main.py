@@ -23,6 +23,7 @@ from app.section1_foundation_and_providers.security.security import (
     register_secret,
 )
 from app.section2_parsing_and_upload.routers.upload import router as upload_router
+from app.section4_ranking_and_search.routers.jobs import router as jobs_router
 
 
 @asynccontextmanager
@@ -74,6 +75,7 @@ app.add_exception_handler(Exception, generic_exception_handler)
 # Register section routers
 app.include_router(settings_router)
 app.include_router(upload_router)
+app.include_router(jobs_router)
 
 
 @app.get("/health", tags=["system"])
