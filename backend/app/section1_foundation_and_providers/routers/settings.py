@@ -24,6 +24,13 @@ async def list_providers() -> List[ProviderInfo]:
     return ProviderRegistry.list_providers()
 
 
+@router.get("/sources")
+async def list_sources():
+    """Returns metadata schemas and credential field definitions for all 7 job sources."""
+    from app.section3_job_sources.registry import get_all_source_meta
+    return get_all_source_meta()
+
+
 @router.post("/test", response_model=TestSettingsResponse)
 async def test_llm_connection(
     request: TestSettingsRequest,
