@@ -59,9 +59,12 @@ async def secret_redaction_middleware(request: Request, call_next):
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
 allowed_origins = [orig.strip() for orig in allowed_origins_env.split(",") if orig.strip()]
 
+cors_regex = os.getenv("CORS_ORIGIN_REGEX", r"^https://.*\.vercel\.app$")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=cors_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "X-LLM-Key", "Authorization", "Accept"],

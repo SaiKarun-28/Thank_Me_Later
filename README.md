@@ -120,6 +120,16 @@ docker compose up --build
 
 ---
 
+### Option C: Deploy Frontend to Vercel
+
+1. Import your GitHub repository `https://github.com/SaiKarun-28/Thank_Me_Later` into [Vercel](https://vercel.com/new).
+2. Set **Root Directory** to `frontend`.
+3. Add Environment Variable:
+   - `NEXT_PUBLIC_API_URL`: Your deployed backend API URL (e.g. `https://your-backend.onrender.com`).
+4. Click **Deploy**. Vercel will build the Next.js bundle and assign a production URL.
+
+---
+
 ## Running the Automated Test Suite
 
 The test suite covers sentinel key redaction, validation error sanitization, provider registry safety, upload hardening, all 7 job source adapters, caching, and hybrid ranking.
