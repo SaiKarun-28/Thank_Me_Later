@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.routers import settings
+from app.routers import settings, upload
 from app.utils.exceptions import (
     generic_exception_handler,
     http_exception_handler,
@@ -71,6 +71,7 @@ app.add_exception_handler(Exception, generic_exception_handler)
 
 # Register routers
 app.include_router(settings.router)
+app.include_router(upload.router)
 
 
 @app.get("/health", tags=["system"])
