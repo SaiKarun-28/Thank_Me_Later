@@ -162,3 +162,24 @@ def test_root_endpoint_metadata(client: TestClient):
     data = response.json()
     assert data["status"] == "online"
     assert "/docs" in data["docs"]
+
+
+def test_cors_preflight_vercel_origins(client: TestClient):
+    """Verify CORS preflight succeeds for both hyphenated and unhyphenated Vercel deployment URLs."""
+    valid_origins = [
+        "https://thankmelater-pndblo4x1-isaikarun536-9118.vercel.app",
+        "https://thankmelater.vercel.app",
+        "https://thank-me-later.vercel.app",
+        "https://thank-me-later-preview.vercel.app",
+    ]
+    for origin in valid_origins:
+        res = client.options(
+            "/settings/providers",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "Content-Type,X-LLM-Key",
+            },
+        )
+        assert res.status_code == 200
+        assert res.headers.get("access-control-allow-origin") == origin
