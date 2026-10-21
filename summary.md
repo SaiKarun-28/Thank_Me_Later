@@ -154,3 +154,30 @@ app/section4_ranking_and_search/tests/test_ranking.py ......... [100%]
 
 ======================== 44 passed, 1 warning in 5.39s ========================
 ```
+
+---
+
+## 5. Frontend UI/UX Enhancements (October 2026)
+
+* **Explicit Light/Dark Theme Support:**
+  * Added UI toggle for theme switching, persisting user preference to `localStorage`.
+  * Implemented zero-flash initialization script in `layout.tsx` using system preference as initial fallback.
+
+* **Provider & Model State Reconciliation:**
+  * Resolved "blank select" bugs by proactively reconciling stored settings against the active provider/model catalogue on app load and provider list updates.
+
+* **Robust Endpoint Validation & Fallback UI:**
+  * Added protocol-aware validation for custom backend endpoints.
+  * Introduced visible, non-blocking fallback status indicators in the Settings UI when metadata requests fail or when persistent browser storage is unavailable.
+
+* **Visual Feedback for Save Action:**
+  * Added a circling `LoaderCircle` animation during save and a `CheckCircle2` success state to confirm the save action.
+
+---
+
+## 6. Frontend Build Verification
+
+* **Lint:** Passed (0 warnings, 0 errors).
+* **Type-check:** Passed.
+* **Build:** Passed successfully.
+

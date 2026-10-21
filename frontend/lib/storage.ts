@@ -4,6 +4,8 @@ const settingsKey = 'tml.settings';
 const parsedKey = 'tml.parsed-profile';
 const confirmedKey = 'tml.confirmed-profile';
 export const customApiUrlKey = 'tml_custom_api_url';
+export const themeKey = 'tml.theme';
+export type Theme = 'light' | 'dark';
 
 export const defaultSettings: Settings = {
   provider: 'gemini',
@@ -16,6 +18,18 @@ export const defaultSettings: Settings = {
 
 // In-memory fallback for environments with blocked/restricted web storage (Claude in-app browser, private mode, WebViews)
 const memoryStorage: Record<string, string> = {};
+
+export function hasDurableStorage(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const key = '__tml_storage_test__';
+    window.localStorage.setItem(key, '1');
+    window.localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function safeGetItem(kind: StorageKind, key: string): string | null {
   if (typeof window === 'undefined') return null;
@@ -47,6 +61,14 @@ export function safeRemoveItem(kind: StorageKind, key: string): void {
   }
 }
 
+export function getTheme(): Theme {
+  return safeGetItem('local', themeKey) === 'dark' ? 'dark' : 'light';
+}
+
+export function saveTheme(theme: Theme): void {
+  safeSetItem('local', themeKey, theme);
+}
+
 export function safeGetCustomApiUrl(): string {
   return safeGetItem('local', customApiUrlKey) || '';
 }
@@ -70,8 +92,7 @@ export function getSettings(): Settings {
     return {
       ...defaultSettings,
       ...parsed,
-      // If model is empty string, fall back to default model for provider
-      model: parsed.model && parsed.model.trim() ? parsed.model : (parsed.provider === 'gemini' || !parsed.provider ? 'gemini-2.5-flash' : ''),
+      model: parsed.model?.trim() || defaultSettings.model,
     };
   } catch {
     return defaultSettings;

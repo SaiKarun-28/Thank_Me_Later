@@ -14,6 +14,7 @@ export function SourceForm({
   onChange: (value: Record<string, string | boolean>) => void;
 }) {
   const [sources, setSources] = useState<SourceMeta[]>(DEFAULT_SOURCES);
+  const [fallback, setFallback] = useState(false);
   const [open, setOpen] = useState<string | null>('remotive');
 
   useEffect(() => {
@@ -25,10 +26,11 @@ export function SourceForm({
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setSources(data);
+          setFallback(false);
         }
       })
       .catch(() => {
-        // Silently retain DEFAULT_SOURCES so user can always configure sources
+        setFallback(true);
       });
   }, []);
 
@@ -36,6 +38,7 @@ export function SourceForm({
 
   return (
     <div className="divide-y divide-border rounded-xl border border-border">
+      {fallback && <p role="status" className="bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">Could not load live source metadata. Using the built-in list.</p>}
       {sources.map(source => (
         <section key={source.id}>
           <button

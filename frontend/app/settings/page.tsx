@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -19,6 +19,7 @@ import { SourceForm } from '@/components/source-form';
 import { apiUrl, getDefaultApiUrl } from '@/lib/api';
 import {
   getSettings,
+  hasDurableStorage,
   safeGetCustomApiUrl,
   safeSetCustomApiUrl,
   saveSettings,
@@ -43,10 +44,24 @@ export default function SettingsPage() {
   const [activeEndpoint, setActiveEndpoint] = useState('');
   const [healthChecking, setHealthChecking] = useState(false);
   const [healthStatus, setHealthStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  const [providersFallback, setProvidersFallback] = useState(false);
+  const [storageAvailable, setStorageAvailable] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   const defaultApiUrl = useMemo(() => getDefaultApiUrl(), []);
 
-  const loadProviders = (endpointUrl?: string) => {
+  const reconcileSettings = (candidate: Settings, catalogue: Provider[]) => {
+    const selected = catalogue.find(item => item.id === candidate.provider) ?? catalogue[0];
+    if (!selected) return candidate;
+    const model = candidate.model.trim();
+    return {
+      ...candidate,
+      provider: selected.id,
+      model: selected.available_models.includes(model) || model ? model : selected.default_model,
+    };
+  };
+
+  const loadProviders = useCallback((endpointUrl?: string) => {
     const url = endpointUrl ? `${endpointUrl.replace(/\/+$/, '')}/settings/providers` : apiUrl('/settings/providers');
     fetch(url)
       .then(async r => {
@@ -55,31 +70,24 @@ export default function SettingsPage() {
       })
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
+          setProvidersFallback(false);
           setProviders(data);
-          setSettings(current =>
-            current.model
-              ? current
-              : {
-                  ...current,
-                  provider: data[0]?.id ?? 'gemini',
-                  model: data[0]?.default_model ?? 'gemini-2.5-flash',
-                }
-          );
+          setSettings(current => reconcileSettings(current, data));
         }
       })
       .catch(() => {
-        // Fallback providers are already initialized from DEFAULT_PROVIDERS
+        setProvidersFallback(true);
       });
-  };
+  }, []);
 
   useEffect(() => {
     const saved = safeGetCustomApiUrl();
     setCustomApiUrl(saved);
     setActiveEndpoint(apiUrl(''));
-    const stored = getSettings();
-    setSettings(stored);
+    setStorageAvailable(hasDurableStorage());
+    setSettings(reconcileSettings(getSettings(), DEFAULT_PROVIDERS));
     loadProviders();
-  }, []);
+  }, [loadProviders]);
 
   const provider = useMemo(
     () => providers.find(item => item.id === settings.provider) ?? providers[0],
@@ -102,11 +110,18 @@ export default function SettingsPage() {
   };
 
   const persist = () => {
+    setSaveStatus('saving');
     saveSettings(settings);
-    setNotice({
-      type: 'success',
-      text: settings.storage === 'session' ? 'Saved for this browser tab only.' : 'Saved on this browser device.',
-    });
+    setTimeout(() => {
+      setSaveStatus('saved');
+      setNotice({
+        type: 'success',
+        text: settings.storage === 'session' ? 'Saved for this browser tab only.' : 'Saved on this browser device.',
+      });
+      setTimeout(() => {
+        setSaveStatus('idle');
+      }, 2000);
+    }, 600);
   };
 
   const test = async () => {
@@ -189,7 +204,16 @@ export default function SettingsPage() {
   };
 
   const applyCustomEndpoint = (urlToSet?: string) => {
-    const val = typeof urlToSet === 'string' ? urlToSet : customApiUrl;
+    const val = typeof urlToSet === 'string' ? urlToSet.trim() : customApiUrl.trim();
+    if (val) {
+      try {
+        const parsed = new URL(val);
+        if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) throw new Error();
+      } catch {
+        setNotice({ type: 'error', text: 'Enter a valid HTTP or HTTPS endpoint without credentials.' });
+        return;
+      }
+    }
     safeSetCustomApiUrl(val);
     setCustomApiUrl(val);
     const active = apiUrl('');
@@ -232,9 +256,10 @@ export default function SettingsPage() {
             </span>
             <div>
               <h2 className="font-semibold">Language model</h2>
-              <p className="text-sm text-black/55 dark:text-white/55">Bring your own key</p>
+              <p className="text-sm text-foreground/55">Bring your own key</p>
             </div>
           </div>
+          {providersFallback && <p role="status" className="mb-4 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">Could not load provider metadata. Using the built-in list.</p>}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="text-sm font-medium">
@@ -432,9 +457,10 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <p className="mt-1 text-sm leading-6 text-black/55 dark:text-white/55">
+              <p className="mt-1 text-sm leading-6 text-foreground/55">
                 The active server endpoint used for resume parsing and job search. If using a remote deployment (e.g. Render), configure it below.
               </p>
+              <p className="mt-2 text-sm leading-6 text-foreground/55">Connection tests send your API key only to the active backend endpoint.</p>
 
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <input
@@ -510,6 +536,7 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
+          {!storageAvailable && <p role="status" className="mt-4 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">Browser storage is unavailable. Settings will be lost when this page reloads.</p>}
           <fieldset className="mt-5 grid gap-3 sm:grid-cols-2">
             <label
               className={`relative flex items-start gap-3.5 rounded-xl p-4 cursor-pointer transition ${
@@ -585,9 +612,15 @@ export default function SettingsPage() {
         </section>
 
         <div className="mt-6">
-          <MotionButton onClick={persist}>
-            <Save size={16} />
-            Save settings
+          <MotionButton onClick={persist} disabled={saveStatus === 'saving'}>
+            {saveStatus === 'saving' ? (
+              <LoaderCircle size={16} className="animate-spin" />
+            ) : saveStatus === 'saved' ? (
+              <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <Save size={16} />
+            )}
+            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Successfully saved!' : 'Save settings'}
           </MotionButton>
         </div>
       </div>
