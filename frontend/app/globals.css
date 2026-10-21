@@ -20,18 +20,58 @@ button { touch-action: manipulation; }
 @layer components {
   .chrome { background: rgb(255 255 255 / .7); backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid rgb(0 0 0 / .08); }
   .surface { @apply rounded-apple border border-border bg-card shadow-card; }
-  .field { @apply h-11 w-full rounded-xl border border-border bg-white px-3 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/10; }
-  .button { @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50; }
-  .button-primary { @apply button bg-black text-white hover:bg-black/85; }
-  .button-secondary { @apply button border border-border bg-white text-foreground hover:bg-muted; }
+  .field {
+    @apply h-11 w-full rounded-xl border border-border bg-white text-foreground px-3 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/10 dark:focus:border-white dark:focus:ring-white/20;
+  }
+  .field option {
+    background-color: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+  .button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 dark:focus-visible:ring-white dark:focus-visible:ring-offset-black disabled:pointer-events-none disabled:opacity-50;
+  }
+  .button-primary {
+    @apply button;
+    background-color: hsl(var(--accent));
+    color: hsl(var(--background));
+  }
+  .button-primary:hover:not(:disabled) {
+    background-color: hsl(var(--accent) / 0.88);
+    color: hsl(var(--background));
+    opacity: 0.95;
+  }
+  .button-secondary {
+    @apply button border border-border;
+    background-color: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+  .button-secondary:hover:not(:disabled) {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--foreground));
+  }
   .chip { @apply inline-flex items-center gap-1 rounded-pill bg-muted px-2.5 py-1 text-sm; }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root { --background: 240 10% 3.9%; --foreground: 0 0% 98%; --card: 240 5.9% 10%; --border: 240 3.7% 15.9%; --muted: 240 3.7% 15.9%; --accent: 0 0% 98%; }
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 5.9% 10%;
+    --border: 240 3.7% 15.9%;
+    --muted: 240 3.7% 15.9%;
+    --accent: 0 0% 98%;
+  }
   .chrome { background: rgb(10 10 20 / .7); border-color: rgb(255 255 255 / .1); }
-  .field { background: hsl(var(--card)); }
-  .button-primary { background: hsl(var(--accent)); color: hsl(var(--background)); }
+  .field { background-color: hsl(var(--card)); color: hsl(var(--foreground)); }
+  .field option { background-color: hsl(var(--card)); color: hsl(var(--foreground)); }
+  .button-primary {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--background));
+  }
+  .button-primary:hover:not(:disabled) {
+    background-color: hsl(var(--accent) / 0.88);
+    color: hsl(var(--background));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

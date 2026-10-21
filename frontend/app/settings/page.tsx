@@ -1,62 +1,88 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Globe, KeyRound, LoaderCircle, Save, ShieldCheck, Wifi } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Globe,
+  KeyRound,
+  LoaderCircle,
+  Save,
+  ShieldCheck,
+  Wifi,
+} from 'lucide-react';
 import { AppShell } from '@/components/app-shell';
 import { MotionButton } from '@/components/motion-button';
 import { PrivacyModal } from '@/components/privacy-modal';
 import { SourceForm } from '@/components/source-form';
-import { apiUrl } from '@/lib/api';
-import { getSettings, saveSettings } from '@/lib/storage';
+import { apiUrl, getDefaultApiUrl } from '@/lib/api';
+import {
+  getSettings,
+  safeGetCustomApiUrl,
+  safeSetCustomApiUrl,
+  saveSettings,
+} from '@/lib/storage';
+import { DEFAULT_PROVIDERS } from '@/lib/constants';
 import type { Provider, Settings, StorageKind } from '@/lib/types';
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings>({
-    provider: 'gemini',
-    model: '',
-    apiKey: '',
-    baseUrl: '',
-    sources: { enable_remotive: true },
-    storage: 'session',
+  const [settings, setSettings] = useState<Settings>(() => {
+    const initial = getSettings();
+    return {
+      ...initial,
+      provider: initial.provider || DEFAULT_PROVIDERS[0].id,
+      model: initial.model || DEFAULT_PROVIDERS[0].default_model,
+    };
   });
-  const [providers, setProviders] = useState<Provider[]>([]);
+  const [providers, setProviders] = useState<Provider[]>(DEFAULT_PROVIDERS);
   const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [showWarning, setShowWarning] = useState(false);
   const [customApiUrl, setCustomApiUrl] = useState('');
+  const [activeEndpoint, setActiveEndpoint] = useState('');
+  const [healthChecking, setHealthChecking] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<{ ok: boolean; message: string } | null>(null);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setCustomApiUrl(localStorage.getItem('tml_custom_api_url') || '');
-    }
-    setSettings(getSettings());
-    fetch(apiUrl('/settings/providers'))
+  const defaultApiUrl = useMemo(() => getDefaultApiUrl(), []);
+
+  const loadProviders = (endpointUrl?: string) => {
+    const url = endpointUrl ? `${endpointUrl.replace(/\/+$/, '')}/settings/providers` : apiUrl('/settings/providers');
+    fetch(url)
       .then(async r => {
         if (!r.ok) throw new Error();
         return r.json() as Promise<Provider[]>;
       })
       .then(data => {
-        setProviders(data);
-        setSettings(current =>
-          current.model
-            ? current
-            : {
-                ...current,
-                provider: data[0]?.id ?? 'gemini',
-                model: data[0]?.default_model ?? 'gemini-2.5-flash',
-              }
-        );
+        if (Array.isArray(data) && data.length > 0) {
+          setProviders(data);
+          setSettings(current =>
+            current.model
+              ? current
+              : {
+                  ...current,
+                  provider: data[0]?.id ?? 'gemini',
+                  model: data[0]?.default_model ?? 'gemini-2.5-flash',
+                }
+          );
+        }
       })
       .catch(() => {
-        setNotice({
-          type: 'error',
-          text: 'Could not connect to backend. Please check backend URL in settings or environment.',
-        });
+        // Fallback providers are already initialized from DEFAULT_PROVIDERS
       });
+  };
+
+  useEffect(() => {
+    const saved = safeGetCustomApiUrl();
+    setCustomApiUrl(saved);
+    setActiveEndpoint(apiUrl(''));
+    const stored = getSettings();
+    setSettings(stored);
+    loadProviders();
   }, []);
 
   const provider = useMemo(
-    () => providers.find(item => item.id === settings.provider),
+    () => providers.find(item => item.id === settings.provider) ?? providers[0],
     [providers, settings.provider]
   );
 
@@ -134,6 +160,59 @@ export default function SettingsPage() {
     }
   };
 
+  const checkBackendHealth = async () => {
+    setHealthChecking(true);
+    setHealthStatus(null);
+    try {
+      const res = await fetch(apiUrl('/health'));
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setHealthStatus({
+          ok: true,
+          message: `Backend online (${data.status || 'ok'}${data.version ? `, v${data.version}` : ''})`,
+        });
+      } else {
+        setHealthStatus({
+          ok: false,
+          message: `Backend responded with HTTP ${res.status}`,
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Connection failed';
+      setHealthStatus({
+        ok: false,
+        message: `Offline or unreachable (${msg})`,
+      });
+    } finally {
+      setHealthChecking(false);
+    }
+  };
+
+  const applyCustomEndpoint = (urlToSet?: string) => {
+    const val = typeof urlToSet === 'string' ? urlToSet : customApiUrl;
+    safeSetCustomApiUrl(val);
+    setCustomApiUrl(val);
+    const active = apiUrl('');
+    setActiveEndpoint(active);
+    loadProviders(active);
+    setNotice({
+      type: 'info',
+      text: val ? `Backend endpoint set to ${val}` : `Backend endpoint reset to default (${defaultApiUrl})`,
+    });
+  };
+
+  const resetEndpointToDefault = () => {
+    safeSetCustomApiUrl('');
+    setCustomApiUrl('');
+    const active = apiUrl('');
+    setActiveEndpoint(active);
+    loadProviders(active);
+    setNotice({
+      type: 'info',
+      text: `Backend endpoint reset to default (${defaultApiUrl})`,
+    });
+  };
+
   return (
     <AppShell>
       <div className="mx-auto max-w-3xl">
@@ -148,7 +227,7 @@ export default function SettingsPage() {
         {/* LLM Provider Configuration */}
         <section className="surface p-5 sm:p-6">
           <div className="mb-5 flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-xl bg-black text-white">
+            <span className="grid size-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black">
               <KeyRound size={19} />
             </span>
             <div>
@@ -236,7 +315,7 @@ export default function SettingsPage() {
 
           {provider?.allows_custom_url && (
             <label className="mt-4 block text-sm font-medium">
-              Custom base URL <span className="font-normal text-black/50">(optional)</span>
+              Custom base URL <span className="font-normal text-black/50 dark:text-white/50">(optional)</span>
               <input
                 className="field mt-2"
                 type="url"
@@ -260,7 +339,7 @@ export default function SettingsPage() {
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   : testStatus === 'error'
                   ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                  : 'bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90'
+                  : 'bg-black text-white hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90'
               }`}
             >
               {testStatus === 'testing' && <LoaderCircle size={16} className="animate-spin" />}
@@ -286,10 +365,23 @@ export default function SettingsPage() {
                   : 'bg-blue-50 text-blue-900 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800'
               }`}
             >
-              {notice.type === 'success' && <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />}
-              {notice.type === 'error' && <AlertTriangle size={18} className="mt-0.5 shrink-0 text-rose-600 dark:text-rose-400" />}
+              {notice.type === 'success' && (
+                <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              )}
+              {notice.type === 'error' && (
+                <AlertTriangle size={18} className="mt-0.5 shrink-0 text-rose-600 dark:text-rose-400" />
+              )}
+              {notice.type === 'info' && (
+                <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-blue-600 dark:text-blue-400" />
+              )}
               <div>
-                <p className="font-semibold">{notice.type === 'success' ? 'Success' : notice.type === 'error' ? 'Connection Error' : 'Note'}</p>
+                <p className="font-semibold">
+                  {notice.type === 'success'
+                    ? 'Success'
+                    : notice.type === 'error'
+                    ? 'Connection Error'
+                    : 'Notice'}
+                </p>
                 <p className="mt-0.5 leading-relaxed">{notice.text}</p>
               </div>
             </div>
@@ -299,7 +391,9 @@ export default function SettingsPage() {
         {/* Job Sources */}
         <section className="surface mt-6 p-5 sm:p-6">
           <h2 className="font-semibold">Job sources</h2>
-          <p className="mt-1 text-sm text-black/55 dark:text-white/55">Only sources you configure will be searched.</p>
+          <p className="mt-1 text-sm text-black/55 dark:text-white/55">
+            Only sources you configure will be searched.
+          </p>
           <div className="mt-5">
             <SourceForm value={settings.sources} onChange={sources => update('sources', sources)} />
           </div>
@@ -308,32 +402,99 @@ export default function SettingsPage() {
         {/* Backend API Configuration */}
         <section className="surface mt-6 p-5 sm:p-6">
           <div className="flex items-start gap-3">
-            <Globe className="mt-0.5 text-blue-600 dark:text-blue-400" size={20} />
+            <Globe className="mt-0.5 text-blue-600 dark:text-blue-400 shrink-0" size={20} />
             <div className="w-full">
-              <h2 className="font-semibold">Backend API Endpoint</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-semibold">Backend API Endpoint</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={checkBackendHealth}
+                    disabled={healthChecking}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-black/5 dark:hover:bg-white/10 transition"
+                  >
+                    {healthChecking ? (
+                      <LoaderCircle size={13} className="animate-spin text-blue-600" />
+                    ) : (
+                      <Activity size={13} className="text-blue-600" />
+                    )}
+                    Ping backend
+                  </button>
+                  {customApiUrl && (
+                    <button
+                      type="button"
+                      onClick={resetEndpointToDefault}
+                      className="text-xs text-rose-600 hover:underline dark:text-rose-400"
+                    >
+                      Reset default
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <p className="mt-1 text-sm leading-6 text-black/55 dark:text-white/55">
-                Set or verify your live Render backend URL. Useful if your environment variable hasn&apos;t refreshed yet.
+                The active server endpoint used for resume parsing and job search. If using a remote deployment (e.g. Render), configure it below.
               </p>
-              <input
-                className="field mt-3 font-mono text-sm w-full"
-                type="url"
-                value={customApiUrl}
-                onChange={e => {
-                  const val = e.target.value;
-                  setCustomApiUrl(val);
-                  if (typeof window !== 'undefined') {
-                    if (val.trim()) {
-                      localStorage.setItem('tml_custom_api_url', val.trim());
-                    } else {
-                      localStorage.removeItem('tml_custom_api_url');
-                    }
-                  }
-                }}
-                placeholder="https://thank-me-later-backend.onrender.com"
-              />
-              <p className="mt-1.5 text-xs text-black/45 dark:text-white/45">
-                Current active endpoint: <span className="font-mono text-blue-600 dark:text-blue-400">{apiUrl('')}</span>
-              </p>
+
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  className="field font-mono text-sm flex-1"
+                  type="url"
+                  value={customApiUrl}
+                  onChange={e => setCustomApiUrl(e.target.value)}
+                  placeholder={defaultApiUrl || 'http://localhost:8000'}
+                />
+                <MotionButton
+                  type="button"
+                  variant="secondary"
+                  onClick={() => applyCustomEndpoint()}
+                  className="sm:w-auto text-xs shrink-0"
+                >
+                  Apply endpoint
+                </MotionButton>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-black/45 dark:text-white/45">Quick preset:</span>
+                <button
+                  type="button"
+                  onClick={() => applyCustomEndpoint('https://thank-me-later-backend.onrender.com')}
+                  className="rounded-md bg-black/5 px-2 py-0.5 text-xs font-mono text-black/70 hover:bg-black/10 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/20 transition"
+                >
+                  Render Backend (Cloud)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyCustomEndpoint('http://localhost:8000')}
+                  className="rounded-md bg-black/5 px-2 py-0.5 text-xs font-mono text-black/70 hover:bg-black/10 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/20 transition"
+                >
+                  Localhost (8000)
+                </button>
+              </div>
+
+              <div className="mt-3 rounded-lg bg-black/[.025] p-3 text-xs dark:bg-white/[.04]">
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <span>
+                    Active endpoint:{' '}
+                    <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+                      {activeEndpoint || defaultApiUrl}
+                    </span>
+                  </span>
+                  {healthStatus && (
+                    <span
+                      className={`inline-flex items-center gap-1 font-medium ${
+                        healthStatus.ok
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      {healthStatus.ok ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+                      {healthStatus.message}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -341,7 +502,7 @@ export default function SettingsPage() {
         {/* Storage preferences */}
         <section className="surface mt-6 p-5 sm:p-6">
           <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 text-emerald-600" size={20} />
+            <ShieldCheck className="mt-0.5 text-emerald-600 shrink-0" size={20} />
             <div>
               <h2 className="font-semibold">Browser storage</h2>
               <p className="mt-1 text-sm leading-6 text-black/55 dark:text-white/55">
@@ -351,36 +512,74 @@ export default function SettingsPage() {
           </div>
           <fieldset className="mt-5 grid gap-3 sm:grid-cols-2">
             <label
-              className={`rounded-xl border p-4 cursor-pointer transition ${
+              className={`relative flex items-start gap-3.5 rounded-xl p-4 cursor-pointer transition ${
                 settings.storage === 'session'
-                  ? 'border-black bg-black/[.03] dark:border-white dark:bg-white/[.06]'
-                  : 'border-border hover:border-black/20 dark:hover:border-white/20'
+                  ? 'border-2 border-black bg-black/[.03] dark:border-white dark:bg-white/[.06]'
+                  : 'border border-border hover:border-black/30 dark:hover:border-white/30'
               }`}
             >
               <input
                 className="sr-only"
                 type="radio"
+                name="storage-option"
                 checked={settings.storage === 'session'}
                 onChange={() => selectStorage('session')}
               />
-              <span className="font-medium">Session only</span>
-              <span className="mt-1 block text-sm text-black/55 dark:text-white/55">Cleared when this tab closes.</span>
+              <span
+                className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2 transition ${
+                  settings.storage === 'session'
+                    ? 'border-black dark:border-white'
+                    : 'border-black/30 dark:border-white/30'
+                }`}
+              >
+                {settings.storage === 'session' && (
+                  <span className="size-2.5 rounded-full bg-black dark:bg-white" />
+                )}
+              </span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Session only</span>
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    Recommended
+                  </span>
+                </div>
+                <span className="mt-1 block text-sm text-black/55 dark:text-white/55">
+                  Cleared when this tab closes.
+                </span>
+              </div>
             </label>
+
             <label
-              className={`rounded-xl border p-4 cursor-pointer transition ${
+              className={`relative flex items-start gap-3.5 rounded-xl p-4 cursor-pointer transition ${
                 settings.storage === 'local'
-                  ? 'border-black bg-black/[.03] dark:border-white dark:bg-white/[.06]'
-                  : 'border-border hover:border-black/20 dark:hover:border-white/20'
+                  ? 'border-2 border-black bg-black/[.03] dark:border-white dark:bg-white/[.06]'
+                  : 'border border-border hover:border-black/30 dark:hover:border-white/30'
               }`}
             >
               <input
                 className="sr-only"
                 type="radio"
+                name="storage-option"
                 checked={settings.storage === 'local'}
                 onChange={() => selectStorage('local')}
               />
-              <span className="font-medium">Remember on this device</span>
-              <span className="mt-1 block text-sm text-black/55 dark:text-white/55">Persists until you clear browser data.</span>
+              <span
+                className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2 transition ${
+                  settings.storage === 'local'
+                    ? 'border-black dark:border-white'
+                    : 'border-black/30 dark:border-white/30'
+                }`}
+              >
+                {settings.storage === 'local' && (
+                  <span className="size-2.5 rounded-full bg-black dark:bg-white" />
+                )}
+              </span>
+              <div className="flex-1">
+                <span className="font-medium">Remember on this device</span>
+                <span className="mt-1 block text-sm text-black/55 dark:text-white/55">
+                  Persists until you clear browser data.
+                </span>
+              </div>
             </label>
           </fieldset>
         </section>
