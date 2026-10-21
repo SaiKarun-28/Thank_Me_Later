@@ -38,11 +38,8 @@ PROVIDER_REGISTRY: Dict[str, ProviderDescriptor] = {
         default_model="gemini-2.5-flash",
         available_models=[
             "gemini-2.5-flash",
-            "gemini-2.5-pro",
             "gemini-2.0-flash",
             "gemini-2.0-flash-lite",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
         ],
         requires_key=True,
         allows_custom_url=False,
@@ -56,7 +53,6 @@ PROVIDER_REGISTRY: Dict[str, ProviderDescriptor] = {
         available_models=[
             "llama-3.3-70b-versatile",
             "llama-3.1-8b-instant",
-            "deepseek-r1-distill-llama-70b",
             "mixtral-8x7b-32768",
         ],
         requires_key=True,
