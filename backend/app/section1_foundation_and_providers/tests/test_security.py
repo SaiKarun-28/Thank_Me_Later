@@ -130,3 +130,35 @@ def test_sanitize_url_validation():
 
     assert sanitize_url("") is None
     assert sanitize_url(None) is None
+
+
+def test_unexpected_exception_in_provider_test_is_redacted(client: TestClient, sentinel_key: str):
+    """Verify that unexpected exceptions containing the sentinel key are scrubbed."""
+    from unittest.mock import patch
+    payload = {
+        "provider": "groq",
+        "model": "llama-3.3-70b-versatile",
+    }
+    with patch(
+        "app.section1_foundation_and_providers.providers.openai_compat.OpenAICompatProvider.test_connection",
+        side_effect=RuntimeError(f"Fatal connection error with secret={sentinel_key}"),
+    ):
+        response = client.post(
+            "/settings/test",
+            json=payload,
+            headers={"X-LLM-Key": sentinel_key},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert sentinel_key not in data["message"]
+        assert "[REDACTED]" in data["message"]
+
+
+def test_root_endpoint_metadata(client: TestClient):
+    """Verify root / endpoint returns system metadata."""
+    response = client.get("/")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "online"
+    assert "/docs" in data["docs"]

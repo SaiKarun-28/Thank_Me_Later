@@ -4,6 +4,7 @@ and Batched LLM Re-scoring (Semaphore=2, batches of 5).
 """
 import asyncio
 from datetime import datetime, timezone
+import json
 import logging
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -204,7 +205,6 @@ async def evaluate_batch_with_llm(
         "remote_preference": profile.remote_preference,
     }
 
-    import json
     prompt = f"""You are an elite technical recruiting calibration engine.
 Evaluate how well the candidate matches each of the job descriptions below.
 

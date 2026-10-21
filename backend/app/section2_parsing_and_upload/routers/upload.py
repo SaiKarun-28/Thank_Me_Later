@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from app.section1_foundation_and_providers.providers.base import LLMProviderError
 from app.section1_foundation_and_providers.providers.registry import get_provider
 from app.section1_foundation_and_providers.schemas.sse import SSEEvent, SSEEventType
-from app.section1_foundation_and_providers.security.security import register_secret
+from app.section1_foundation_and_providers.security.security import register_secret, redact_text
 from app.section2_parsing_and_upload.services.parsing import (
     ParsingError,
     extract_resume_text,
@@ -103,13 +103,13 @@ async def upload_resume(
             logger.warning("Upload parsing error: %s", e.message)
             yield SSEEvent(
                 event=SSEEventType.ERROR,
-                data={"message": e.message, "code": "PARSING_ERROR"},
+                data={"message": redact_text(e.message), "code": "PARSING_ERROR"},
             ).to_sse_format()
         except LLMProviderError as e:
             logger.warning("Upload LLM error: %s", e.message)
             yield SSEEvent(
                 event=SSEEventType.ERROR,
-                data={"message": e.message, "code": "LLM_ERROR"},
+                data={"message": redact_text(e.message), "code": "LLM_ERROR"},
             ).to_sse_format()
         except Exception as e:
             logger.error("Unexpected error during resume processing: %s", str(e))

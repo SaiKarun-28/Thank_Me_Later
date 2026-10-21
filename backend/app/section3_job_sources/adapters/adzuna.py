@@ -30,6 +30,7 @@ class AdzunaAdapter(BaseSourceAdapter):
             logger.debug("Adzuna app_id or app_key not supplied; skipping Adzuna source.")
             return []
 
+        register_secret(config.adzuna_app_id)
         register_secret(config.adzuna_app_key)
         all_postings: List[JobPosting] = []
         primary_query = queries[0] if queries else "developer"

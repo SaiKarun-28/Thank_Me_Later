@@ -2,6 +2,7 @@
 OpenAI-Compatible Provider Implementation for Section 1.
 Supports Groq, OpenRouter, NVIDIA NIM, Cerebras, Mistral, and local Ollama.
 """
+import os
 import time
 from typing import Any, Dict, List, Optional
 import httpx
@@ -22,7 +23,7 @@ class OpenAICompatProvider(LLMProvider):
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key.strip()}"
         if "openrouter.ai" in self.base_url:
-            headers["HTTP-Referer"] = "http://localhost:3000"
+            headers["HTTP-Referer"] = os.getenv("FRONTEND_URL", "http://localhost:3000")
             headers["X-Title"] = "Thank Me Later"
         return headers
 

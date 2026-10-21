@@ -31,6 +31,11 @@ def test_model_name_regex_validation():
     assert validate_model_name("google/gemini-2.0-flash-exp:free") == "google/gemini-2.0-flash-exp:free"
     assert validate_model_name("mistral.small.latest") == "mistral.small.latest"
 
+    # Test long model names up to 128 chars
+    long_valid_model = "org/my-custom-quantized-model-name-v2.0-finetuned:latest"
+    assert validate_model_name(long_valid_model) == long_valid_model
+    assert validate_model_name("a" * 128) == "a" * 128
+
     with pytest.raises(LLMProviderError) as exc_info:
         validate_model_name("llama 3.3 versatile")
     assert exc_info.value.status_code == 400
@@ -40,15 +45,18 @@ def test_model_name_regex_validation():
     assert exc_info.value.status_code == 400
 
     with pytest.raises(LLMProviderError) as exc_info:
-        validate_model_name("a" * 65)
+        validate_model_name("a" * 129)
     assert exc_info.value.status_code == 400
 
 
 def test_custom_url_restrictions():
-    """Verify that custom URLs are only permitted for Ollama on localhost or host.docker.internal."""
+    """Verify custom URLs permitted for Ollama on localhost, host.docker.internal, or ollama, and auto-normalize /v1."""
     assert validate_custom_url("ollama", "http://localhost:11434/v1") == "http://localhost:11434/v1"
-    assert validate_custom_url("ollama", "http://127.0.0.1:11434/v1") == "http://127.0.0.1:11434/v1"
+    # Auto-append /v1 if omitted
+    assert validate_custom_url("ollama", "http://localhost:11434") == "http://localhost:11434/v1"
+    assert validate_custom_url("ollama", "http://127.0.0.1:11434") == "http://127.0.0.1:11434/v1"
     assert validate_custom_url("ollama", "http://host.docker.internal:11434/v1") == "http://host.docker.internal:11434/v1"
+    assert validate_custom_url("ollama", "http://ollama:11434") == "http://ollama:11434/v1"
 
     with pytest.raises(LLMProviderError) as exc:
         validate_custom_url("ollama", "http://api.malicious.com:11434/v1")

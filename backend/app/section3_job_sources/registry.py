@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from app.section1_foundation_and_providers.schemas.job import JobPosting, JobSourceConfig, SourceStatus
 from app.section1_foundation_and_providers.schemas.settings import SourceFieldSchema, SourceMetaSchema
+from app.section1_foundation_and_providers.security.security import redact_text
 from app.section3_job_sources.adapters.adzuna import AdzunaAdapter
 from app.section3_job_sources.adapters.ashby import AshbyAdapter
 from app.section3_job_sources.adapters.greenhouse import GreenhouseAdapter
@@ -140,6 +141,15 @@ SOURCE_METADATA: List[SourceMetaSchema] = [
                 required=False,
                 description="API key from jooble.org/api.",
             ),
+            SourceFieldSchema(
+                key="jooble_country",
+                label="Country Code",
+                type="select",
+                required=False,
+                default="us",
+                options=["us", "in", "gb", "ca", "de"],
+                description="Target country code.",
+            ),
         ],
     ),
 ]
@@ -185,7 +195,7 @@ async def fetch_single_source(
     except Exception as e:
         logger.warning("Source '%s' failed during fetch: %s", adapter.name, str(e))
         if on_status:
-            await on_status(SourceStatus(source_id=adapter.id, status="error", message=str(e)))
+            await on_status(SourceStatus(source_id=adapter.id, status="error", message=redact_text(str(e))))
         return []
 
 

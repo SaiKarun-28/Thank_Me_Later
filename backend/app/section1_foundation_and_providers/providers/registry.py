@@ -12,8 +12,8 @@ from app.section1_foundation_and_providers.providers.gemini import GeminiProvide
 from app.section1_foundation_and_providers.providers.openai_compat import OpenAICompatProvider
 from app.section1_foundation_and_providers.schemas.settings import ProviderInfo
 
-# Safe model name validation regex: alphanumeric, underscores, hyphens, periods, colons, slashes, up to 64 chars
-SAFE_MODEL_REGEX = re.compile(r"^[a-zA-Z0-9_\-.:/@]{1,64}$")
+# Safe model name validation regex: alphanumeric, underscores, hyphens, periods, colons, slashes, @, up to 128 chars
+SAFE_MODEL_REGEX = re.compile(r"^[a-zA-Z0-9_\-.:/@]{1,128}$")
 
 
 @dataclass(frozen=True)
@@ -147,7 +147,7 @@ def validate_model_name(model: str) -> str:
     cleaned = model.strip()
     if not SAFE_MODEL_REGEX.match(cleaned):
         raise LLMProviderError(
-            f"Invalid model name '{cleaned}'. Must match pattern: ^[a-zA-Z0-9_\\-.:/]{{1,64}}$",
+            f"Invalid model name '{cleaned}'. Must match pattern: ^[a-zA-Z0-9_\\-.:/@]{{1,128}}$",
             status_code=400,
         )
     return cleaned
@@ -156,7 +156,8 @@ def validate_model_name(model: str) -> str:
 def validate_custom_url(provider_id: str, custom_url: Optional[str]) -> Optional[str]:
     """
     Validates custom base URLs.
-    Custom URLs are strictly permitted ONLY for Ollama pointing to localhost or host.docker.internal.
+    Custom URLs are strictly permitted ONLY for Ollama pointing to localhost, host.docker.internal, or container host.
+    Automatically ensures /v1 path suffix is present for OpenAI compatibility.
     """
     if not custom_url:
         return None
@@ -176,12 +177,19 @@ def validate_custom_url(provider_id: str, custom_url: Optional[str]) -> Optional
         )
 
     hostname = (parsed.hostname or "").lower()
-    allowed_hosts = {"localhost", "127.0.0.1", "host.docker.internal"}
+    allowed_hosts = {"localhost", "127.0.0.1", "host.docker.internal", "ollama", "::1"}
     if hostname not in allowed_hosts:
         raise LLMProviderError(
-            f"Custom Ollama URL host '{hostname}' is not permitted. Only localhost, 127.0.0.1, or host.docker.internal are allowed.",
+            f"Custom Ollama URL host '{hostname}' is not permitted. Only localhost, 127.0.0.1, ::1, host.docker.internal, or ollama are allowed.",
             status_code=400,
         )
+
+    # Automatically normalize base_url to include /v1 for Ollama OpenAI compatibility endpoint
+    path = (parsed.path or "").rstrip("/")
+    if not path.endswith("/v1"):
+        path = f"{path}/v1" if path else "/v1"
+        port_part = f":{parsed.port}" if parsed.port else ""
+        cleaned = f"{parsed.scheme}://{parsed.hostname}{port_part}{path}"
 
     return cleaned
 

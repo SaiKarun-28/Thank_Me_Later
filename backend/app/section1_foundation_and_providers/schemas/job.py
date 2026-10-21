@@ -51,11 +51,12 @@ class JobSourceConfig(BaseModel):
 
     # Jooble
     jooble_key: Optional[str] = None
+    jooble_country: str = "us"
 
     # Company ATS slugs (Keyless)
-    greenhouse_slugs: List[str] = Field(default_factory=list)
-    lever_slugs: List[str] = Field(default_factory=list)
-    ashby_slugs: List[str] = Field(default_factory=list)
+    greenhouse_slugs: List[str] = Field(default_factory=lambda: ["gitlab", "cloudflare"])
+    lever_slugs: List[str] = Field(default_factory=lambda: ["figma", "spotify"])
+    ashby_slugs: List[str] = Field(default_factory=lambda: ["ramp", "openai"])
 
     # Remotive (Keyless)
     enable_remotive: bool = True

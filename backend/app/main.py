@@ -59,7 +59,7 @@ async def secret_redaction_middleware(request: Request, call_next):
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
 allowed_origins = [orig.strip() for orig in allowed_origins_env.split(",") if orig.strip()]
 
-cors_regex = os.getenv("CORS_ORIGIN_REGEX", r"^https://.*\.vercel\.app$")
+cors_regex = os.getenv("CORS_ORIGIN_REGEX", r"^https://thank-me-later(-[a-z0-9-]+)?\.vercel\.app$")
 
 app.add_middleware(
     CORSMiddleware,
@@ -79,6 +79,18 @@ app.add_exception_handler(Exception, generic_exception_handler)
 app.include_router(settings_router)
 app.include_router(upload_router)
 app.include_router(jobs_router)
+
+
+@app.get("/", tags=["system"])
+async def root():
+    """Root landing endpoint providing service metadata."""
+    return {
+        "name": "Thank Me Later API",
+        "version": "0.1.0",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health",
+    }
 
 
 @app.get("/health", tags=["system"])

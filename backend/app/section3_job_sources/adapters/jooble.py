@@ -7,7 +7,7 @@ from typing import List
 import httpx
 
 from app.section1_foundation_and_providers.schemas.job import JobPosting, JobSourceConfig
-from app.section1_foundation_and_providers.security.security import register_secret
+from app.section1_foundation_and_providers.security.security import register_secret, redact_text
 from app.section3_job_sources.base import BaseSourceAdapter
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,11 @@ class JoobleAdapter(BaseSourceAdapter):
         all_postings: List[JobPosting] = []
         primary_query = queries[0] if queries else "software engineer"
 
-        url = f"https://jooble.org/api/{config.jooble_key.strip()}"
+        country = (config.jooble_country or "us").lower().strip()
+        country_prefix = "uk" if country == "gb" else country
+        domain = f"{country_prefix}.jooble.org" if country not in ("us", "") else "jooble.org"
+
+        url = f"https://{domain}/api/{config.jooble_key.strip()}"
         payload = {
             "keywords": primary_query,
             "page": 1,
@@ -61,6 +65,6 @@ class JoobleAdapter(BaseSourceAdapter):
                     if posting:
                         all_postings.append(posting)
         except Exception as e:
-            logger.warning("Jooble fetch error: %s", str(e))
+            logger.warning("Jooble fetch error: %s", redact_text(str(e)))
 
         return all_postings

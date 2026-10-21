@@ -309,3 +309,18 @@ def test_sources_metadata_api_endpoint(client: TestClient):
     adzuna_meta = next(s for s in sources if s["id"] == "adzuna")
     country_field = next(f for f in adzuna_meta["fields"] if f["key"] == "adzuna_country")
     assert "in" in country_field["options"]
+
+    # Check Jooble country options contains 'in' and 'us'
+    jooble_meta = next(s for s in sources if s["id"] == "jooble")
+    jooble_country_field = next(f for f in jooble_meta["fields"] if f["key"] == "jooble_country")
+    assert "in" in jooble_country_field["options"]
+    assert "us" in jooble_country_field["options"]
+
+
+def test_job_source_config_curated_defaults():
+    """Verify JobSourceConfig initializes with non-empty curated ATS defaults."""
+    cfg = JobSourceConfig()
+    assert "gitlab" in cfg.greenhouse_slugs
+    assert "figma" in cfg.lever_slugs
+    assert "ramp" in cfg.ashby_slugs
+    assert cfg.jooble_country == "us"

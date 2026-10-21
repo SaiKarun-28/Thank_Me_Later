@@ -12,7 +12,7 @@ from app.section1_foundation_and_providers.schemas.settings import (
     TestSettingsRequest,
     TestSettingsResponse,
 )
-from app.section1_foundation_and_providers.security.security import register_secret
+from app.section1_foundation_and_providers.security.security import register_secret, redact_text
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 logger = logging.getLogger(__name__)
@@ -63,13 +63,13 @@ async def test_llm_connection(
         logger.warning("Provider test failed for %s: %s", request.provider, e.message)
         return TestSettingsResponse(
             success=False,
-            message=e.message,
+            message=redact_text(e.message),
             model=request.model,
         )
     except Exception as e:
         logger.error("Unexpected error during provider test for %s: %s", request.provider, str(e))
         return TestSettingsResponse(
             success=False,
-            message=f"Failed to complete connection test: {str(e)}",
+            message=redact_text(f"Failed to complete connection test: {str(e)}"),
             model=request.model,
         )

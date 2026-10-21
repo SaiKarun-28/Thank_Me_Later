@@ -44,6 +44,8 @@ async def search_jobs(
         register_secret(x_llm_key)
     if request.sources.jsearch_key:
         register_secret(request.sources.jsearch_key)
+    if request.sources.adzuna_app_id:
+        register_secret(request.sources.adzuna_app_id)
     if request.sources.adzuna_app_key:
         register_secret(request.sources.adzuna_app_key)
     if request.sources.jooble_key:

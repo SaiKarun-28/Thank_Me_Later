@@ -8,6 +8,8 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
+from app.section1_foundation_and_providers.security.security import redact_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -140,46 +142,48 @@ class LLMProvider(ABC):
 
         if isinstance(exc, httpx.HTTPStatusError):
             code = exc.response.status_code
+            safe_text = redact_text(exc.response.text)
             if code == 401 or code == 403:
                 return LLMProviderError(
                     message=f"Authentication failed: The provided API key is invalid or unauthorized for provider '{self.name}'.",
                     status_code=401,
-                    raw_error=exc.response.text,
+                    raw_error=safe_text,
                 )
             if code == 429:
                 return LLMProviderError(
                     message=f"Rate limit or quota exceeded for provider '{self.name}'. Please check your plan or try again shortly.",
                     status_code=429,
-                    raw_error=exc.response.text,
+                    raw_error=safe_text,
                 )
             if code == 404:
                 return LLMProviderError(
                     message=f"Model '{self.model}' not found on provider '{self.name}'. Please verify the model name.",
                     status_code=404,
-                    raw_error=exc.response.text,
+                    raw_error=safe_text,
                 )
             return LLMProviderError(
-                message=f"Provider '{self.name}' returned HTTP {code}: {exc.response.text[:200]}",
+                message=redact_text(f"Provider '{self.name}' returned HTTP {code}: {exc.response.text[:200]}"),
                 status_code=code,
-                raw_error=exc.response.text,
+                raw_error=safe_text,
             )
 
         if isinstance(exc, (httpx.TimeoutException, asyncio.TimeoutError)):
             return LLMProviderError(
                 message=f"Request to provider '{self.name}' timed out after {self.timeout}s.",
                 status_code=504,
-                raw_error=str(exc),
+                raw_error=redact_text(str(exc)),
             )
 
         if isinstance(exc, httpx.RequestError):
             return LLMProviderError(
                 message=f"Could not connect to provider '{self.name}' at {self.base_url}. Please check the URL or host.",
                 status_code=502,
-                raw_error=str(exc),
+                raw_error=redact_text(str(exc)),
             )
 
+        safe_exc_str = redact_text(str(exc))
         return LLMProviderError(
-            message=f"Unexpected error communicating with provider '{self.name}': {str(exc)}",
+            message=f"Unexpected error communicating with provider '{self.name}': {safe_exc_str}",
             status_code=500,
-            raw_error=str(exc),
+            raw_error=safe_exc_str,
         )
