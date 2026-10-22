@@ -54,10 +54,11 @@ export default function SettingsPage() {
     const selected = catalogue.find(item => item.id === candidate.provider) ?? catalogue[0];
     if (!selected) return candidate;
     const model = candidate.model.trim();
+    const isKnownModel = selected.available_models.includes(model);
     return {
       ...candidate,
       provider: selected.id,
-      model: selected.available_models.includes(model) || model ? model : selected.default_model,
+      model: isKnownModel ? model : selected.default_model,
     };
   };
 

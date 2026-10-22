@@ -187,7 +187,7 @@ async def evaluate_batch_with_llm(
     # Delimit and truncate jobs
     jobs_payload = []
     for job in batch:
-        truncated_jd = (job.description or "")[:1500]
+        truncated_jd = (job.description or "")[:3000]
         jobs_payload.append({
             "id": job.id,
             "title": job.title,

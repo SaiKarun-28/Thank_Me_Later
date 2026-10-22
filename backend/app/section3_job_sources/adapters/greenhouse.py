@@ -57,7 +57,7 @@ class GreenhouseAdapter(BaseSourceAdapter):
                                 posting = self.build_posting(
                                     id=f"gh_{slug}_{item.get('id')}",
                                     title=item.get("title", ""),
-                                    company=slug.capitalize(),
+                                    company=item.get("company_name") or slug.capitalize(),
                                     apply_url=item.get("absolute_url", ""),
                                     location=item.get("location", {}).get("name", "") if isinstance(item.get("location"), dict) else "",
                                     description=item.get("content", ""),

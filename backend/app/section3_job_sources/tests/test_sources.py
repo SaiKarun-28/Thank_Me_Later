@@ -36,6 +36,26 @@ def test_strip_html_utilities():
     assert strip_html("") == ""
     assert strip_html(None) == ""
 
+    # Test entity-encoded HTML (Greenhouse style)
+    encoded_greenhouse = (
+        '&lt;div class=&quot;content-intro&quot;&gt;&lt;h3&gt;About Us&lt;/h3&gt;'
+        '&lt;p&gt;We build stuff.&lt;/p&gt;&lt;/div&gt;'
+        '&lt;h4&gt;Role Summary&lt;/h4&gt;&lt;p&gt;Senior Python Engineer needed.&lt;/p&gt;'
+        '&lt;ul&gt;&lt;li&gt;Build pipelines&lt;/li&gt;&lt;li&gt;Optimize SQL&lt;/li&gt;&lt;/ul&gt;'
+        '&lt;div class=&quot;content-conclusion&quot;&gt;&lt;p&gt;EEOC info.&lt;/p&gt;&lt;/div&gt;'
+    )
+    clean_gh = strip_html(encoded_greenhouse)
+    assert "content-intro" not in clean_gh
+    assert "content-conclusion" not in clean_gh
+    assert "About Us" not in clean_gh
+    assert "EEOC info" not in clean_gh
+    assert "Role Summary" in clean_gh
+    assert "Senior Python Engineer needed." in clean_gh
+    assert "• Build pipelines" in clean_gh
+    assert "• Optimize SQL" in clean_gh
+    assert "&lt;" not in clean_gh
+    assert "<" not in clean_gh
+
 
 @pytest.mark.asyncio
 async def test_job_cache_ttl_and_expiry():

@@ -51,6 +51,8 @@ class LeverAdapter(BaseSourceAdapter):
                         resp = await client.get(url, headers={"User-Agent": "ThankMeLater/0.1.0"})
                         if resp.status_code == 200:
                             postings_data = resp.json()
+                            if not isinstance(postings_data, list):
+                                postings_data = []
                             company_postings = []
                             for item in postings_data:
                                 categories = item.get("categories", {}) if isinstance(item.get("categories"), dict) else {}

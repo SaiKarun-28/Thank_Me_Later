@@ -22,35 +22,102 @@ class LLMProviderError(Exception):
         self.raw_error = raw_error
 
 
+import ast
+
+def _repair_json_syntax(s: str) -> str:
+    """Removes trailing commas before closing braces/brackets and unescapes invalid escapes."""
+    return re.sub(r",\s*([}\]])", r"\1", s)
+
+
+def _wrap_or_return(parsed: Any) -> Optional[Dict[str, Any]]:
+    """Ensures result is a dictionary; wraps list of evaluations if model returned an array."""
+    if isinstance(parsed, dict):
+        return parsed
+    if isinstance(parsed, list):
+        return {"evaluations": parsed}
+    return None
+
+
 def extract_json_object(raw_text: str) -> Dict[str, Any]:
     """
     Extracts a JSON object from text that may contain markdown code fences,
-    preceding conversational chatter, or trailing content.
+    preceding conversational chatter, trailing commentary, trailing commas, or list roots.
     """
     cleaned = raw_text.strip()
-    
-    # Strip markdown ```json ... ``` code blocks if present
-    if cleaned.startswith("```"):
-        cleaned = re.sub(r"^```[a-zA-Z]*\n?", "", cleaned)
-        cleaned = re.sub(r"\n?```$", "", cleaned).strip()
 
-    # Direct JSON parse attempt
+    # 1. Look for markdown code blocks anywhere in the text
+    fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", cleaned, re.IGNORECASE)
+    if fence_match:
+        content = fence_match.group(1).strip()
+        try:
+            val = _wrap_or_return(json.loads(content))
+            if val is not None:
+                return val
+        except (json.JSONDecodeError, ValueError):
+            try:
+                val = _wrap_or_return(json.loads(_repair_json_syntax(content)))
+                if val is not None:
+                    return val
+            except Exception:
+                pass
+
+    # 2. Direct JSON parse attempt
     try:
-        parsed = json.loads(cleaned)
-        if isinstance(parsed, dict):
-            return parsed
-    except json.JSONDecodeError:
+        val = _wrap_or_return(json.loads(cleaned))
+        if val is not None:
+            return val
+    except (json.JSONDecodeError, ValueError):
         pass
 
-    # Regex search for first outer {...} bracket pair
-    match = re.search(r"(\{.*\})", cleaned, re.DOTALL)
-    if match:
+    # 3. Direct JSON parse with syntax repair
+    try:
+        val = _wrap_or_return(json.loads(_repair_json_syntax(cleaned)))
+        if val is not None:
+            return val
+    except (json.JSONDecodeError, ValueError):
+        pass
+
+    # 4. Regex search for outer {...} bracket pair
+    obj_match = re.search(r"(\{[\s\S]*\})", cleaned)
+    if obj_match:
+        cand = obj_match.group(1)
         try:
-            parsed = json.loads(match.group(1))
-            if isinstance(parsed, dict):
-                return parsed
-        except json.JSONDecodeError:
-            pass
+            val = _wrap_or_return(json.loads(cand))
+            if val is not None:
+                return val
+        except (json.JSONDecodeError, ValueError):
+            try:
+                val = _wrap_or_return(json.loads(_repair_json_syntax(cand)))
+                if val is not None:
+                    return val
+            except Exception:
+                pass
+
+    # 5. Regex search for outer [...] array pair (some LLMs output raw list of evaluations)
+    list_match = re.search(r"(\[[\s\S]*\])", cleaned)
+    if list_match:
+        cand = list_match.group(1)
+        try:
+            val = _wrap_or_return(json.loads(cand))
+            if val is not None:
+                return val
+        except (json.JSONDecodeError, ValueError):
+            try:
+                val = _wrap_or_return(json.loads(_repair_json_syntax(cand)))
+                if val is not None:
+                    return val
+            except Exception:
+                pass
+
+    # 6. Fallback: Python literal eval (for single-quoted dicts/booleans like 'role': 'Dev', True)
+    try:
+        cand = obj_match.group(1) if obj_match else (list_match.group(1) if list_match else cleaned)
+        parsed_literal = ast.literal_eval(cand)
+        val = _wrap_or_return(parsed_literal)
+        if val is not None:
+            return val
+    except Exception:
+        pass
 
     raise ValueError(f"Could not parse valid JSON object from LLM response: {raw_text[:200]}...")
 

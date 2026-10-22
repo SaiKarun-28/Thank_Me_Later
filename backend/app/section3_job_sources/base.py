@@ -15,21 +15,58 @@ logger = logging.getLogger(__name__)
 
 def strip_html(raw_html: Optional[str]) -> str:
     """
-    Strips HTML tags, decodes HTML entities, and normalizes excessive whitespace.
+    Thoroughly strips HTML tags, decodes HTML entities (including double-encoded),
+    removes ATS company intro/conclusion boilerplates, formats bullet lists,
+    and normalizes whitespace.
     """
     if not raw_html or not isinstance(raw_html, str):
         return ""
     
-    # Replace common block elements with spaces to prevent word smushing
-    text = re.sub(r"<(?:p|div|br|li|h[1-6]|tr)[^>]*>", "\n", raw_html, flags=re.IGNORECASE)
-    # Strip all remaining HTML tags
+    # 1. Unescape HTML entities first so encoded tags (e.g. &lt;div&gt;) become parseable HTML
+    text = raw_html
+    for _ in range(2):
+        if "&" in text:
+            text = html.unescape(text)
+        else:
+            break
+
+    # 2. Strip script and style blocks entirely
+    text = re.sub(r"<(?:script|style)[^>]*>[\s\S]*?</(?:script|style)>", "", text, flags=re.IGNORECASE)
+
+    # 3. Strip Greenhouse / Lever generic ATS boilerplates (e.g. content-intro and content-conclusion)
+    candidate = re.sub(
+        r"<div[^>]*\bclass=[\"'][^\"']*content-intro[^\"']*[\"'][^>]*>[\s\S]*?</div>",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    candidate = re.sub(
+        r"<div[^>]*\bclass=[\"'][^\"']*content-conclusion[^\"']*[\"'][^>]*>[\s\S]*?</div>",
+        "",
+        candidate,
+        flags=re.IGNORECASE,
+    )
+    if len(candidate.strip()) > 100:
+        text = candidate
+
+    # 4. Convert list items to bullet points for readability
+    text = re.sub(r"<li[^>]*>", "\n• ", text, flags=re.IGNORECASE)
+
+    # 5. Convert block/header/break elements to linebreaks to prevent text smushing
+    text = re.sub(r"<(?:p|div|br|h[1-6]|tr|blockquote|section|header|footer|hr)[^>]*>", "\n", text, flags=re.IGNORECASE)
+
+    # 6. Strip all remaining HTML tags
     text = re.sub(r"<[^>]+>", " ", text)
-    # Decode HTML entities (&amp;, &nbsp;, &#39;, etc.)
+
+    # 7. Final entity decode and character cleanup
     text = html.unescape(text)
-    # Normalize excessive newlines and spaces
+    text = text.replace("\xa0", " ").replace("\u200b", "").replace("\ufeff", "")
+
+    # 8. Normalize spacing and consecutive newlines
     text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n\s*\n+", "\n\n", text)
+    text = re.sub(r"\n[ \t]*\n+", "\n\n", text)
     return text.strip()
+
 
 
 class BaseSourceAdapter(ABC):

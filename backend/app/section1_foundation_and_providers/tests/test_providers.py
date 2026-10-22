@@ -101,6 +101,22 @@ def test_extract_json_object_variations():
     chatter_input = "Sure, here is your parsed profile:\n{\"years_experience\": 5.5}\nHope this helps!"
     assert extract_json_object(chatter_input) == {"years_experience": 5.5}
 
+    # Trailing commas repair
+    trailing_comma_input = '{"name": "Bob", "skills": ["Python", "SQL",], "active": true,}'
+    assert extract_json_object(trailing_comma_input) == {"name": "Bob", "skills": ["Python", "SQL"], "active": True}
+
+    # Model returns raw JSON array
+    raw_array_input = '[{"id": "job_1", "match_score": 90.0}]'
+    assert extract_json_object(raw_array_input) == {"evaluations": [{"id": "job_1", "match_score": 90.0}]}
+
+    # Code fence anywhere with trailing chatter
+    mid_fence_input = "Here is the result:\n```json\n[{\"id\": \"job_2\", \"match_score\": 85.0}]\n```\nHope it fits!"
+    assert extract_json_object(mid_fence_input) == {"evaluations": [{"id": "job_2", "match_score": 85.0}]}
+
+    # Python single quote literal fallback
+    literal_input = "{'role': 'Engineer', 'skills': ['Go']}"
+    assert extract_json_object(literal_input) == {"role": "Engineer", "skills": ["Go"]}
+
     with pytest.raises(ValueError):
         extract_json_object("Not a json at all.")
 

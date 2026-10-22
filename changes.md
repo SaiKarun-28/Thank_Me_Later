@@ -31,12 +31,21 @@ All changes maintain strict adherence to stateless BYOK architecture, security r
 * **Interactive Save Button Feedback:**
   * Added visual feedback to the "Save settings" button: transitions from idle (`Save`) to a circling spinner (`LoaderCircle`) during save, followed by a success confirmation state (`CheckCircle2`).
 
-### B. Provider Free-Tier Model Updates
-* **Google Gemini & Groq Catalogue Refinement:**
-  * Removed deprecated Gemini 1.5 and discontinued model IDs that caused "model not found" errors when switching providers.
-  * Updated default and available models to current active free-tier endpoints:
-    * **Google Gemini:** `gemini-2.5-flash`, `gemini-2.0-flash`, `gemini-2.0-flash-lite`.
-    * **Groq:** `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `mixtral-8x7b-32768`.
+### B. Provider Free-Tier Model & Switching Fixes
+* **Resolved "Model Not Found" Root Causes:**
+  * Fixed model reconciliation in `frontend/app/settings/page.tsx` where switching providers retained the old provider's model due to an operator precedence bug (`selected.available_models.includes(model) || model ? ...`).
+  * Removed decommissioned models from Groq (`deepseek-r1-distill-llama-70b` and `mixtral-8x7b-32768`).
+  * Fixed hyphenation in Cerebras model IDs (`llama-3.3-70b` and `llama-3.1-8b`, correcting former unhyphenated `llama3.3-70b`).
+  * Updated OpenRouter catalogue to point to confirmed `:free` tier models (`meta-llama/llama-3.3-70b-instruct:free`, `openrouter/free`).
+  * Synchronized all 8 providers across both frontend `constants.ts` and backend `registry.py`:
+    * **Google Gemini:** `gemini-2.0-flash` (default), `gemini-2.0-flash-lite`, `gemini-1.5-flash`, `gemini-1.5-pro`, `gemini-2.5-flash`.
+    * **Groq:** `llama-3.3-70b-versatile` (default), `llama-3.1-8b-instant`, `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `qwen/qwen3.8-27b`.
+    * **Cerebras:** `llama-3.3-70b` (default), `llama-3.1-8b`, `llama-3.1-70b`.
+    * **OpenRouter:** `meta-llama/llama-3.3-70b-instruct:free` (default), `meta-llama/llama-3.1-8b-instruct:free`, `google/gemini-2.0-flash-exp:free`, `deepseek/deepseek-r1:free`, `mistralai/mistral-7b-instruct:free`, `openrouter/free`.
+    * **NVIDIA NIM:** `meta/llama-3.3-70b-instruct` (default), `meta/llama-3.1-8b-instruct`, `nvidia/llama-3.1-nemotron-70b-instruct`, `mistralai/mistral-large-2-instruct`.
+    * **Mistral AI:** `mistral-small-latest` (default), `open-mistral-7b`, `codestral-latest`, `mistral-large-latest`.
+    * **OpenAI:** `gpt-4o-mini` (default), `gpt-4o`, `o3-mini`, `gpt-4-turbo`.
+    * **Ollama (Local):** `llama3.2` (default), `llama3.3`, `llama3.1`, `qwen2.5`, `mistral`.
 
 ---
 
@@ -46,18 +55,23 @@ All changes maintain strict adherence to stateless BYOK architecture, security r
 | :--- | :--- |
 | [`frontend/app/globals.css`](frontend/app/globals.css) | Added explicit `[data-theme='light']` and `[data-theme='dark']` token mappings and smooth color transitions. |
 | [`frontend/app/layout.tsx`](frontend/app/layout.tsx) | Added zero-flash theme initialization script and `suppressHydrationWarning`. |
-| [`frontend/app/settings/page.tsx`](frontend/app/settings/page.tsx) | Added settings reconciliation, fallback banners, URL validation, and save button animation states. |
+| [`frontend/app/settings/page.tsx`](frontend/app/settings/page.tsx) | Fixed model reconciliation bug on provider switch, added fallback banners, URL validation, and save button animation states. |
 | [`frontend/components/app-shell.tsx`](frontend/app/shell.tsx) | Added theme toggle button and state synchronization. |
+| [`frontend/components/job-card.tsx`](frontend/components/job-card.tsx) | Added client-side HTML tag sanitization to prevent raw tags from displaying in job descriptions. |
 | [`frontend/components/source-form.tsx`](frontend/components/source-form.tsx) | Added non-blocking offline metadata fallback notice. |
 | [`frontend/lib/storage.ts`](frontend/lib/storage.ts) | Added theme persistence helpers and durable storage capability detection. |
-| [`frontend/lib/constants.ts`](frontend/lib/constants.ts) | Updated active free-tier models for Gemini and Groq. |
-| [`backend/app/section1_foundation_and_providers/providers/registry.py`](backend/app/section1_foundation_and_providers/providers/registry.py) | Synchronized backend provider model catalogue with frontend updates. |
+| [`frontend/lib/constants.ts`](frontend/lib/constants.ts) | Synchronized all 8 provider catalogues with active free-tier models and correct IDs. |
+| [`backend/app/section1_foundation_and_providers/providers/base.py`](backend/app/section1_foundation_and_providers/providers/base.py) | Hardened JSON object extraction against code fences anywhere, trailing commas, and array roots. |
+| [`backend/app/section1_foundation_and_providers/providers/registry.py`](backend/app/section1_foundation_and_providers/providers/registry.py) | Synchronized backend provider model catalogue with frontend updates across all 8 providers. |
+| [`backend/app/section3_job_sources/base.py`](backend/app/section3_job_sources/base.py) | Upgraded `strip_html` to decode entities first, strip ATS boilerplates, and format list bullets. |
+| [`backend/app/section3_job_sources/adapters/greenhouse.py`](backend/app/section3_job_sources/adapters/greenhouse.py) | Used `company_name` when present. |
+| [`backend/app/section3_job_sources/adapters/ashby.py`](backend/app/section3_job_sources/adapters/ashby.py) | Prioritized `descriptionPlain` over `descriptionHtml`. |
+| [`backend/app/section3_job_sources/adapters/lever.py`](backend/app/section3_job_sources/adapters/lever.py) | Added guard to ensure `postings_data` is a list before iteration. |
+| [`backend/app/section4_ranking_and_search/services/ranking.py`](backend/app/section4_ranking_and_search/services/ranking.py) | Increased job description slice window from 1500 to 3000 chars for LLM calibration. |
 
 ---
 
 ## 4. Verification & Testing Status
 
-* **Backend Test Suite:** 44/44 pytest unit tests passed successfully (`pytest backend/app`).
-* **Frontend Type-Check:** `tsc --noEmit` passed with zero errors.
-* **Frontend Linting:** `next lint` passed with zero errors or warnings.
-* **Production Build:** `next build` completed successfully across all static and server-rendered routes.
+* **Backend Test Suite:** 45/45 pytest unit tests passed successfully (`pytest backend/app`).
+* **Frontend Type-Check & Build:** `next build` completed successfully across all static and server-rendered routes with zero errors.

@@ -55,7 +55,7 @@ class AshbyAdapter(BaseSourceAdapter):
                             company_postings = []
                             for item in board_jobs:
                                 apply_url = item.get("jobUrl") or item.get("applyUrl") or ""
-                                desc = item.get("descriptionHtml") or item.get("descriptionPlain") or ""
+                                desc = item.get("descriptionPlain") or item.get("descriptionHtml") or ""
                                 is_remote = item.get("isRemote", False) or "remote" in (item.get("location") or "").lower()
 
                                 posting = self.build_posting(
