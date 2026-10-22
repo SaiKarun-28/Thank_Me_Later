@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Thank Me Later - Architecture",
+    "output": "thank-me-later.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/SaiKarun-28/Thank_Me_Later.git",
+      "revision": "9c105e07c7ef2c86217e6f8332df6597f8c7940a",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    { "id": "users", "type": "external", "label": "User", "sublabel": "Browser / Mobile", "pos": [50, 200], "size": [120, 60] },
+    { "id": "frontend", "type": "frontend", "label": "Frontend", "sublabel": "Next.js / Tailwind", "pos": [250, 200], "size": [130, 60], "sources": [{ "path": "frontend/app/layout.tsx" }] },
+    { "id": "api", "type": "backend", "label": "API Server", "sublabel": "FastAPI", "pos": [550, 200], "size": [130, 60], "tag": "BYOK Pattern", "sources": [{ "path": "backend/app/main.py" }] },
+    { "id": "sources", "type": "external", "label": "Job Sources", "sublabel": "Aggregators", "pos": [750, 100], "size": [120, 60] },
+    { "id": "llm", "type": "external", "label": "LLM Provider", "sublabel": "Gemini/Groq/etc", "pos": [750, 300], "size": [120, 60], "tag": "User-Provided Key" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Vercel (Frontend)", "wraps": ["frontend"] },
+    { "kind": "region", "label": "Render (Backend)", "wraps": ["api"] }
+  ],
+  "connections": [
+    { "id": "u-to-f", "from": "users", "to": "frontend", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "f-to-a", "from": "frontend", "to": "api", "label": "HTTPS (API requests)", "variant": "emphasis" },
+    { "id": "a-to-s", "from": "api", "to": "sources", "label": "HTTP (Job search)", "variant": "dashed" },
+    { "id": "a-to-l", "from": "api", "to": "llm", "label": "HTTPS (LLM inference)", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Frontend (Vercel)", "items": ["Next.js/React", "Browser-local storage for state", "Zero persistence"] },
+    { "dot": "emerald", "title": "Backend (Render)", "items": ["FastAPI", "Ephemeral processing in RAM", "Secret redaction middleware"] },
+    { "dot": "rose", "title": "Security (BYOK)", "items": ["User-provided LLM keys", "No database storage", "Ephemeral resume handling"] }
+  ]
+}
