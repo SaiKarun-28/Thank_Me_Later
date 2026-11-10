@@ -1,8 +1,19 @@
 export type StorageKind = 'session' | 'local';
 export type RemotePreference = 'remote' | 'hybrid' | 'onsite' | 'any';
-export type ExperienceLevel = 'intern' | 'fresher' | 'junior' | 'mid' | 'senior' | 'lead';
+export type ExperienceLevel = 'intern' | 'fresher' | 'junior' | 'mid' | 'senior' | 'lead' | 'manager' | 'director';
+export type LocationType = 'city' | 'state' | 'country' | 'region' | 'postcode' | 'unknown';
 
 export interface TargetRole { role: string; confidence: number; }
+export interface LocationData {
+  display_name: string;
+  city: string;
+  state: string;
+  country: string;
+  country_code: string;
+  latitude: number;
+  longitude: number;
+  location_type: LocationType;
+}
 export interface ParsedProfile {
   name: string;
   contact: Record<string, string | null | undefined>;
@@ -20,7 +31,7 @@ export interface ParsedProfile {
 export interface ConfirmedProfile {
   skills: string[];
   target_roles: TargetRole[];
-  location: string;
+  location: LocationData | null;
   remote_preference: RemotePreference;
   experience_level: ExperienceLevel;
   years_experience: number;
@@ -32,6 +43,6 @@ export interface Settings { provider: string; model: string; apiKey: string; bas
 export interface Progress { stage: string; percent: number; message: string; }
 export interface SourceStatus { source_id: string; status: 'pending' | 'loading' | 'success' | 'error'; count: number; message?: string | null; }
 export interface RankedJob {
-  id: string; title: string; company: string; location: string; remote: boolean; description: string; apply_url: string;
+  id: string; title: string; company: string; location: string; location_data: LocationData | null; remote: boolean; description: string; apply_url: string;
   heuristic_score: number; llm_score: number | null; final_score: number; match_reason: string; required_skills: string[]; matched_skills: string[]; missing_skills: string[]; posted_date: string | null; source: string; salary: string | null;
 }

@@ -52,3 +52,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Brag video output
+brag-output-*/
+

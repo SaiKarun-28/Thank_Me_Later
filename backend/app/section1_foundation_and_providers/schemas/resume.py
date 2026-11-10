@@ -4,9 +4,21 @@ Resume and Profile Data Models.
 from typing import List, Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field
 
+RemotePreference = Literal["remote", "hybrid", "onsite", "local", "any"]
+ExperienceLevel = Literal["intern", "fresher", "junior", "mid", "senior", "lead", "manager", "director"]
+LocationType = Literal["city", "state", "country", "region", "postcode", "unknown"]
 
-RemotePreference = Literal["remote", "hybrid", "onsite", "any"]
-ExperienceLevel = Literal["intern", "fresher", "junior", "mid", "senior", "lead"]
+
+class LocationData(BaseModel):
+    """Structured location selected by the user via autocomplete."""
+    display_name: str
+    city: str = ""
+    state: str = ""
+    country: str = ""
+    country_code: str = ""
+    latitude: float = 0.0
+    longitude: float = 0.0
+    location_type: LocationType = "unknown"
 
 
 def calculate_default_experience_level(years: float) -> ExperienceLevel:
@@ -75,7 +87,7 @@ class ConfirmedProfile(BaseModel):
     name: str = ""
     skills: List[str] = Field(default_factory=list)
     target_roles: List[TargetRole] = Field(default_factory=list)
-    location: str = ""
+    location: str = ""  # Will be replaced with LocationData in next phase
     remote_preference: RemotePreference = "any"
     experience_level: ExperienceLevel = "mid"
     years_experience: float = 0.0
@@ -89,7 +101,7 @@ class SearchProfile(BaseModel):
     """
     target_roles: List[TargetRole] = Field(default_factory=list)
     skills: List[str] = Field(default_factory=list)
-    location: str = ""
+    location: Optional[LocationData] = None
     remote_preference: RemotePreference = "any"
     experience_level: ExperienceLevel = "mid"
     years_experience: float = 0.0

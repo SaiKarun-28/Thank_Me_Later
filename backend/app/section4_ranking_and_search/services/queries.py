@@ -1,6 +1,7 @@
 """
 High-intent search query generator for Section 4.
 Produces 1 to 3 targeted queries from SearchProfile target roles and primary skills.
+Optionally appends location for providers that support it (Adzuna, JSearch, Jooble).
 """
 from typing import List
 from app.section1_foundation_and_providers.schemas.resume import SearchProfile
@@ -40,3 +41,34 @@ def generate_search_queries(profile: SearchProfile) -> List[str]:
 
     # Limit to maximum 3 high-intent queries
     return queries[:3]
+
+
+def generate_location_queries(profile: SearchProfile) -> List[str]:
+    """
+    Generates location-augmented queries for providers that support location parameters
+    (Adzuna, JSearch, Jooble). Appends city/state/country to the primary query.
+    """
+    base_queries = generate_search_queries(profile)
+    location_queries: List[str] = []
+
+    if profile.location:
+        loc = profile.location
+        # Build location string: city, state, country_code
+        loc_parts = []
+        if loc.city:
+            loc_parts.append(loc.city)
+        if loc.state:
+            loc_parts.append(loc.state)
+        if loc.country_code:
+            loc_parts.append(loc.country_code)
+        elif loc.country:
+            loc_parts.append(loc.country)
+
+        loc_str = ", ".join(loc_parts) if loc_parts else ""
+
+        if loc_str:
+            for q in base_queries:
+                location_queries.append(f"{q} {loc_str}")
+
+    # If no location or no queries generated, fall back to base queries
+    return location_queries if location_queries else base_queries

@@ -12,7 +12,12 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from app.section1_foundation_and_providers.providers.base import LLMProvider, LLMProviderError
 from app.section1_foundation_and_providers.schemas.job import JobPosting, RankedJob
 from app.section1_foundation_and_providers.schemas.resume import SearchProfile
-from app.section4_ranking_and_search.services.skills import calculate_skill_overlap
+from app.section4_ranking_and_search.services.skills import calculate_candidate_relevance
+from app.section4_ranking_and_search.services.locations import (
+    is_location_eligible,
+    freshness_classification,
+    calculate_fit_score,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +58,6 @@ def filter_recency_30_days(jobs: List[JobPosting]) -> List[JobPosting]:
 
         is_too_old = False
         try:
-            # Handle ISO formats and common date formats
             date_str = str(job.posted_date).replace("Z", "+00:00")
             parsed_date = datetime.fromisoformat(date_str)
             if parsed_date.tzinfo is None:
@@ -62,7 +66,6 @@ def filter_recency_30_days(jobs: List[JobPosting]) -> List[JobPosting]:
             if days_old > 30.0:
                 is_too_old = True
         except Exception:
-            # If date format is non-standard (e.g. timestamp or relative string), keep job
             pass
 
         if not is_too_old:
@@ -93,76 +96,30 @@ def calculate_title_similarity(target_roles: List[str], job_title: str) -> float
     return min(100.0, best_score)
 
 
-def calculate_fit_score(profile: SearchProfile, job: JobPosting) -> float:
-    """Calculates remote/location and experience level fit (0-100)."""
-    score = 70.0  # Default baseline
-
-    # Remote preference matching
-    pref = profile.remote_preference.lower()
-    if pref == "remote":
-        if job.remote or "remote" in job.location.lower():
-            score += 15.0
-        else:
-            score -= 10.0
-    elif pref in ("onsite", "hybrid"):
-        if profile.location and profile.location.lower() in job.location.lower():
-            score += 15.0
-
-    # Experience level keyword fit
-    lvl = profile.experience_level.lower()
-    title_lower = job.title.lower()
-    if lvl in ("senior", "lead") and ("senior" in title_lower or "lead" in title_lower or "staff" in title_lower):
-        score += 15.0
-    elif lvl in ("junior", "fresher", "intern") and ("junior" in title_lower or "intern" in title_lower or "associate" in title_lower):
-        score += 15.0
-    elif lvl == "mid" and not any(k in title_lower for k in ("senior", "lead", "intern", "staff")):
-        score += 10.0
-
-    return max(0.0, min(100.0, score))
-
-
-def calculate_recency_boost(posted_date: Optional[str]) -> float:
-    """Calculates up to 10 points boost for recently posted jobs."""
-    if not posted_date:
-        return 5.0
-    try:
-        now = datetime.now(timezone.utc)
-        date_str = str(posted_date).replace("Z", "+00:00")
-        parsed = datetime.fromisoformat(date_str)
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        days = (now - parsed).total_seconds() / 86400.0
-        if days <= 7.0:
-            return 10.0
-        if days <= 14.0:
-            return 5.0
-    except Exception:
-        pass
-    return 0.0
-
-
 def calculate_heuristic_score(
     job: JobPosting,
     profile: SearchProfile,
 ) -> Tuple[float, List[str], List[str]]:
     """
     Computes heuristic ranking score (0-100):
-    - 40% Skill Overlap
+    - 40% Skill Overlap (candidate relevance)
     - 30% Title Similarity
     - 20% Experience / Location Fit
     - 10% Recency Boost
     """
     # 1. Skill overlap (40%)
-    skill_pct, matched_skills, missing_skills = calculate_skill_overlap(
+    skill_pct, matched_skills, missing_skills = calculate_candidate_relevance(
         profile.skills, job.description, job.title
     )
     # 2. Title similarity (30%)
     target_role_names = [r.role for r in profile.target_roles]
     title_score = calculate_title_similarity(target_role_names, job.title)
-    # 3. Fit score (20%)
+    # 3. Fit score (20%) - now centralized in locations.py
     fit_score = calculate_fit_score(profile, job)
-    # 4. Recency boost (10%)
-    recency_boost = calculate_recency_boost(job.posted_date)
+    # 4. Freshness
+    freshness_bucket, recency_boost = freshness_classification(job.posted_date)
+    if freshness_bucket == "older_than_30d":
+        return 0.0, [], []
 
     total_score = (
         0.40 * skill_pct
@@ -230,8 +187,7 @@ Output MUST be a valid JSON object with an 'evaluations' array matching this str
 }}"""
 
     system_prompt = "You evaluate tech job fit objectively. Output valid JSON strictly."
-    
-    # Attempt with 429 backoff
+
     for attempt in range(2):
         try:
             resp_data = await llm.json_completion(prompt=prompt, system_prompt=system_prompt)
@@ -318,6 +274,20 @@ async def rank_and_enrich_jobs(
     for h_score, job, matched_skills, missing_skills in top_100:
         llm_eval = llm_results_map.get(job.id)
 
+        # Strict location filtering — only eligible jobs proceed
+        if job.location and job.location_data:
+            job_loc = job.location_data or normalize_raw_location(job.location or "")
+            if not is_location_eligible(job, job_loc, profile.remote_preference):
+                continue  # Skip ineligible job immediately
+        elif job.location and profile.location:
+            # If we don't have structured location data, we must still respect the constraint
+            # fallback to basic string match as a safeguard
+            if not is_location_eligible(job, profile.location, profile.remote_preference):
+                 continue
+
+        llm_score = None
+        final_score = h_score
+
         if llm_eval and "match_score" in llm_eval:
             try:
                 raw_llm_score = float(llm_eval["match_score"])
@@ -331,7 +301,7 @@ async def rank_and_enrich_jobs(
             except Exception:
                 final_score = h_score
                 clamped_llm_score = None
-                reason = f"Heuristic match based on {len(matched_skills)} overlapping skills and title fit."
+                reason = f"Heuristic match based on {len(matched_skills)} overlapping skills and role title alignment."
                 req_skills = []
         else:
             final_score = h_score

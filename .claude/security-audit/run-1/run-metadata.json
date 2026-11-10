@@ -1,0 +1,1 @@
+{"run_id": "run-1", "repo": "Thank_Me_Later", "target": "D:/Thank_Me_Later-2", "source_ref": "main", "profile": "standard", "scope_paths": ["backend/app", "frontend"], "execution_policy": "sandboxed-source-and-local-only", "run_status": "in_progress"}

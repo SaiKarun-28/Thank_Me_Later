@@ -225,7 +225,16 @@ def test_jobs_search_sse_stream_endpoint(client: TestClient):
         "profile": {
             "target_roles": [{"role": "Software Engineer", "confidence": 0.9}],
             "skills": ["Python", "FastAPI"],
-            "location": "Remote",
+            "location": {
+                "display_name": "Remote",
+                "city": "",
+                "state": "",
+                "country": "",
+                "country_code": "",
+                "latitude": 0.0,
+                "longitude": 0.0,
+                "location_type": "city"
+            },
             "remote_preference": "remote",
             "experience_level": "mid",
             "years_experience": 4.0,

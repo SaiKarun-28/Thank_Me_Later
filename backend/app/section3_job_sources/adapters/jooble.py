@@ -44,6 +44,13 @@ class JoobleAdapter(BaseSourceAdapter):
             "page": 1,
         }
 
+        # If additional queries contain location information (city, state, country),
+        # incorporate that into the keywords for better targeting
+        if len(queries) > 1 and queries[1]:
+            # Assume the second query may be location-augmented
+            # Append location to keywords if not already present
+            payload["keywords"] = f"{primary_query} {queries[1]}"
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 resp = await client.post(url, json=payload, headers={"User-Agent": "ThankMeLater/0.1.0"})

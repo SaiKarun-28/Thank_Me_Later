@@ -6,12 +6,25 @@ from pydantic import BaseModel, Field
 from app.section1_foundation_and_providers.schemas.resume import SearchProfile
 
 
+class JobLocation(BaseModel):
+    """Structured, normalized location extracted from a raw job posting."""
+    city: str = ""
+    state: str = ""
+    country: str = ""
+    country_code: str = ""
+    is_remote: bool = False
+    is_hybrid: bool = False
+    is_onsite: bool = False
+    location_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
 class JobPosting(BaseModel):
     """Normalized raw job posting from any source."""
     id: str
     title: str
     company: str
     location: str = ""
+    location_data: Optional[JobLocation] = None
     remote: bool = False
     description: str = ""
     apply_url: str
