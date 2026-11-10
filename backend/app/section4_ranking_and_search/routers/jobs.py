@@ -1,9 +1,11 @@
 """
 Jobs router: POST /jobs/search with SSE streaming for progress, source statuses, and ranked results.
+Jobs router: POST /jobs/search with SSE streaming for progress, source statuses, and ranked results.
 """
 import asyncio
 import logging
 from typing import AsyncGenerator, Optional
+
 from fastapi import APIRouter, Header, Query
 from fastapi.responses import StreamingResponse
 
@@ -15,6 +17,7 @@ from app.section1_foundation_and_providers.security.security import register_sec
 from app.section3_job_sources.registry import fetch_all_sources
 from app.section4_ranking_and_search.services.queries import generate_search_queries
 from app.section4_ranking_and_search.services.ranking import rank_and_enrich_jobs
+from app.section4_ranking_and_search.services.locations import is_location_eligible
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 logger = logging.getLogger(__name__)
@@ -92,10 +95,13 @@ async def search_jobs(
                     "message": f"Searching 7 job sources with queries: {', '.join(queries[:2])}...",
                 },
             ).to_sse_format()
+            await asyncio.sleep(0.05)
 
             queue: asyncio.Queue[SourceStatus] = asyncio.Queue()
+            excluded_count = 0
 
             async def status_callback(status_update: SourceStatus):
+                nonlocal excluded_count
                 await queue.put(status_update)
 
             # Launch fetch in background task so we can stream source statuses in real-time
@@ -174,3 +180,9 @@ async def search_jobs(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# Health check endpoint
+@router.get("/health")
+async def health():
+    return {"status": "ok"}

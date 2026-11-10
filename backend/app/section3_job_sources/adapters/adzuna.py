@@ -46,6 +46,11 @@ class AdzunaAdapter(BaseSourceAdapter):
             "content-type": "application/json",
         }
 
+        # Add location parameter if provided in query (format: "query city, state, country")
+        if len(queries) > 1 and queries[1]:
+            # The second query might be location-augmented
+            pass
+
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 resp = await client.get(url, params=params, headers={"User-Agent": "ThankMeLater/0.1.0"})

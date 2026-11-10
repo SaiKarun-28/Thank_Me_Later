@@ -46,6 +46,12 @@ class JSearchAdapter(BaseSourceAdapter):
             "date_posted": "month",
         }
 
+        # Add location parameter if provided
+        # JSearch supports location as part of query string
+        if len(queries) > 1 and queries[1]:
+            # Second query might contain location info
+            params["query"] = queries[1]
+
         url = "https://jsearch.p.rapidapi.com/search"
 
         try:

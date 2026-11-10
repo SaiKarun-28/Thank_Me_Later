@@ -13,6 +13,7 @@ from app.section1_foundation_and_providers.schemas.sse import SSEEvent, SSEEvent
 from app.section1_foundation_and_providers.security.security import register_secret, redact_text
 from app.section2_parsing_and_upload.services.parsing import (
     ParsingError,
+    MAX_FILE_SIZE_BYTES,
     extract_resume_text,
     parse_resume_with_llm,
 )
@@ -38,8 +39,15 @@ async def upload_resume(
     if effective_key:
         register_secret(effective_key)
 
-    # Read file content entirely into memory
-    file_bytes = await file.read()
+    # Read file content entirely into memory, enforced via infrastructure limits
+    # FastAPI handles streaming upload request, but we enforce limit at read
+    content = await file.read(MAX_FILE_SIZE_BYTES + 1)
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        return StreamingResponse(
+            iter([SSEEvent(event=SSEEventType.ERROR, data={"message": "File too large (>5MB)", "code": "FILE_TOO_LARGE"}).to_sse_format()]),
+            status_code=413
+        )
+    file_bytes = content
 
     async def sse_event_stream() -> AsyncGenerator[str, None]:
         try:

@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd frontend && npm run dev"],
+      "port": 3000,
+      "url": "http://localhost:3000"
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "uvicorn",
+      "runtimeArgs": ["app.main:app", "--app-dir", "backend", "--port", "8000"],
+      "port": 8000,
+      "url": "http://localhost:8000"
+    }
+  ]
+}
