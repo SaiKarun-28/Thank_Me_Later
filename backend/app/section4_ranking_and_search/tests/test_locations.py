@@ -21,11 +21,11 @@ def test_is_location_eligible():
     selected = JobLocation(city="Hyderabad", state="Telangana", country="India", country_code="IN")
 
     # Matching
-    job_match = JobPosting(id="1", title="Dev", company="A", apply_url="http://a.com", location="Hyderabad, Telangana, India")
+    job_match = JobPosting(id="1", title="Dev", company="A", apply_url="http://a.com", location="Hyderabad, Telangana, India", source="Test")
     assert is_location_eligible(job_match, selected) is True
 
     # Mismatch
-    job_mismatch = JobPosting(id="2", title="Dev", company="B", apply_url="http://b.com", location="Bengaluru, Karnataka, India")
+    job_mismatch = JobPosting(id="2", title="Dev", company="B", apply_url="http://b.com", location="Bengaluru, Karnataka, India", source="Test")
     assert is_location_eligible(job_mismatch, selected) is False
 
 def test_classify_seniority():
