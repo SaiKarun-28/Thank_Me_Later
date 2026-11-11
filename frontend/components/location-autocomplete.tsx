@@ -36,7 +36,7 @@ export function LocationAutocomplete({ onSelect, initialValue = '' }: Props) {
         setSuggestions(data);
         setIsOpen(true);
       } catch (err) {
-        if (err.name !== 'AbortError') {
+        if (err instanceof Error && err.name !== 'AbortError') {
           console.error('Location search failed', err);
         }
       } finally {
