@@ -44,5 +44,5 @@ export interface Progress { stage: string; percent: number; message: string; }
 export interface SourceStatus { source_id: string; status: 'pending' | 'loading' | 'success' | 'error'; count: number; message?: string | null; }
 export interface RankedJob {
   id: string; title: string; company: string; location: string; location_data: LocationData | null; remote: boolean; description: string; apply_url: string;
-  heuristic_score: number; llm_score: number | null; final_score: number; match_reason: string; required_skills: string[]; matched_skills: string[]; missing_skills: string[]; posted_date: string | null; source: string; salary: string | null;
+  heuristic_score: number; llm_score: number | null; final_score: number; match_type: 'exact' | 'nearby'; match_reason: string; required_skills: string[]; matched_skills: string[]; missing_skills: string[]; posted_date: string | null; source: string; salary: string | null;
 }

@@ -94,67 +94,69 @@ def is_location_eligible(
     job: JobPosting,
     selected: JobLocation,
     remote_preference: str = "any",
+    strict: bool = True,
 ) -> bool:
     """
-    Strict location eligibility check.
-
-    Returns True only if the job passes the user's selected location policy.
-    - Remote jobs: included only when remote_preference allows.
-    - Local jobs: must match selected city/state/country.
-    - Missing metadata: excluded.
+    Location eligibility check.
+    If strict=True: exact match required (city/state/country).
+    If strict=False: nearby match allowed (state/country only).
     """
     # Remote jobs
     if job.remote or (job.location and "remote" in job.location.lower()):
         return remote_preference in {"remote", "hybrid", "any"}
 
-    # Job has no location info at all
+    # Job has no location info
     if not job.location_data and not job.location:
         return False
 
-    # Normalise job location into JobLocation
+    # Normalise job location
     job_loc = job.location_data or normalize_raw_location(job.location or "")
 
-    # Must have at least city or country to compare
-    if not job_loc.city and not job_loc.state and not job_loc.country:
-        return False
-
-    # Compare city first (exact, case-insensitive)
-    city_match = (
-        selected.city and job_loc.city and selected.city.lower() == job_loc.city.lower()
-    )
-
-    # Compare state
-    state_match = (
-        selected.state and job_loc.state and selected.state.lower() == job_loc.state.lower()
-    )
-
-    # Compare country
+    # Match country and state
     country_match = (
-        selected.country_code and job_loc.country_code
-        and selected.country_code.lower() == job_loc.country_code.lower()
+        selected.country_code and job_loc.country_code and
+        selected.country_code.lower() == job_loc.country_code.lower()
+    )
+    state_match = (
+        selected.state and job_loc.state and
+        selected.state.lower() == job_loc.state.lower()
+    )
+    city_match = (
+        selected.city and job_loc.city and
+        selected.city.lower() == job_loc.city.lower()
     )
 
-    # Policy: exact city match preferred; if city is selected, state/country must also align
-    if selected.city and city_match:
-        # City matched — also require state or country to align
-        return (selected.state and state_match) or (selected.country_code and country_match)
+    if strict:
+        # Require exact city match (if city provided)
+        if selected.city:
+            return city_match and (state_match or country_match)
+        return state_match or country_match
+    else:
+        # Nearby match: state/country match, city doesn't have to match (or exist)
+        return state_match or country_match
 
-    # No explicit city in selection — fall back to state / country
-    if selected.state and state_match:
-        # If user selected a state without a specific city, allow any city in that state
-        # within the selected country if also matched
-        if selected.country_code and country_match:
-            return True
-        if not selected.country_code:
-            return True
 
-    if selected.country_code and country_match:
-        # User picked a country; allow any city/job in that country
-        # (but if they also selected a specific city elsewhere, that takes precedence)
-        return not (selected.city and not city_match)
+def is_nearby_location(job: JobPosting, selected: JobLocation) -> bool:
+    """
+    Check if a job is nearby based on state and country match (excluding city match).
+    """
+    # Get normalized job location
+    job_loc = job.location_data or normalize_raw_location(job.location or "")
 
-    # No match
-    return False
+    # Check state match
+    state_match = (
+        selected.state and job_loc.state and
+        selected.state.lower() == job_loc.state.lower()
+    )
+
+    # Check country match
+    country_match = (
+        selected.country_code and job_loc.country_code and
+        selected.country_code.lower() == job_loc.country_code.lower()
+    )
+
+    # Nearby means state and country match (city may differ)
+    return state_match and country_match
 
 
 def classify_seniority(years: float) -> str:

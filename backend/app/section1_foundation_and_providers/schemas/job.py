@@ -38,6 +38,7 @@ class RankedJob(JobPosting):
     heuristic_score: float = Field(ge=0.0, le=100.0)
     llm_score: Optional[float] = Field(default=None, ge=0.0, le=100.0)
     final_score: float = Field(ge=0.0, le=100.0)
+    match_type: Literal['exact', 'nearby'] = 'exact'
     match_reason: str = ""
     required_skills: List[str] = Field(default_factory=list)
     matched_skills: List[str] = Field(default_factory=list)

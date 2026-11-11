@@ -15,6 +15,7 @@ from app.section1_foundation_and_providers.schemas.resume import SearchProfile
 from app.section4_ranking_and_search.services.skills import calculate_candidate_relevance
 from app.section4_ranking_and_search.services.locations import (
     is_location_eligible,
+    is_nearby_location,
     freshness_classification,
     calculate_fit_score,
 )
@@ -269,21 +270,31 @@ async def rank_and_enrich_jobs(
                 llm_results_map.update(res)
 
     # 5. Build final RankedJob items
-    ranked_jobs: List[RankedJob] = []
+    exact_matches: List[RankedJob] = []
+    nearby_matches: List[RankedJob] = []
 
     for h_score, job, matched_skills, missing_skills in top_100:
         llm_eval = llm_results_map.get(job.id)
 
-        # Strict location filtering — only eligible jobs proceed
-        if job.location and job.location_data:
-            job_loc = job.location_data or normalize_raw_location(job.location or "")
-            if not is_location_eligible(job, job_loc, profile.remote_preference):
-                continue  # Skip ineligible job immediately
-        elif job.location and profile.location:
-            # If we don't have structured location data, we must still respect the constraint
-            # fallback to basic string match as a safeguard
-            if not is_location_eligible(job, profile.location, profile.remote_preference):
-                 continue
+        # Check location eligibility
+        is_exact = False
+        is_nearby = False
+
+        if job.location and (job.location_data or job.location):
+            job_loc = job.location_data or normalize_raw_location(job.location)
+
+            # Check exact first
+            if is_location_eligible(job, job_loc, profile.remote_preference, strict=True):
+                is_exact = True
+            # Check nearby
+            elif is_location_eligible(job, job_loc, profile.remote_preference, strict=False):
+                is_nearby = True
+            else:
+                continue  # Skip ineligible job entirely
+
+        elif not (job.remote or (job.location and "remote" in job.location.lower())):
+             # If neither location data nor remote, skip
+             continue
 
         llm_score = None
         final_score = h_score
@@ -295,7 +306,6 @@ async def rank_and_enrich_jobs(
                 final_score = round(0.5 * h_score + 0.5 * clamped_llm_score, 2)
                 reason = str(llm_eval.get("match_reason") or f"Matched based on {len(matched_skills)} overlapping skills.")
                 req_skills = [str(s) for s in llm_eval.get("required_skills", []) if s]
-                # Re-derive missing skills based on required skills if available
                 if req_skills:
                     missing_skills = [s for s in req_skills if s.lower() not in [m.lower() for m in matched_skills]]
             except Exception:
@@ -309,28 +319,35 @@ async def rank_and_enrich_jobs(
             reason = f"Heuristic match based on {len(matched_skills)} overlapping skills and role title alignment."
             req_skills = []
 
-        ranked_jobs.append(
-            RankedJob(
-                id=job.id,
-                title=job.title,
-                company=job.company,
-                location=job.location,
-                remote=job.remote,
-                description=job.description,
-                apply_url=job.apply_url,
-                posted_date=job.posted_date,
-                source=job.source,
-                salary=job.salary,
-                heuristic_score=h_score,
-                llm_score=clamped_llm_score,
-                final_score=final_score,
-                match_reason=reason,
-                required_skills=req_skills,
-                matched_skills=matched_skills,
-                missing_skills=missing_skills,
-            )
+        ranked_job = RankedJob(
+            id=job.id,
+            title=job.title,
+            company=job.company,
+            location=job.location,
+            remote=job.remote,
+            description=job.description,
+            apply_url=job.apply_url,
+            posted_date=job.posted_date,
+            source=job.source,
+            salary=job.salary,
+            heuristic_score=h_score,
+            llm_score=clamped_llm_score,
+            final_score=final_score,
+            match_type='exact' if is_exact else 'nearby',
+            match_reason=reason,
+            required_skills=req_skills,
+            matched_skills=matched_skills,
+            missing_skills=missing_skills,
         )
 
-    # 6. Sort by final score descending and take Top 20
-    ranked_jobs.sort(key=lambda j: j.final_score, reverse=True)
+        if is_exact:
+            exact_matches.append(ranked_job)
+        else:
+            nearby_matches.append(ranked_job)
+
+    # 6. Sort and combine: Exact matches first, then nearby matches
+    exact_matches.sort(key=lambda j: j.final_score, reverse=True)
+    nearby_matches.sort(key=lambda j: j.final_score, reverse=True)
+
+    ranked_jobs = exact_matches + nearby_matches
     return ranked_jobs[:20]
