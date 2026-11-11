@@ -22,7 +22,7 @@ export default function JobsPage() {
       No jobs found in {profile?.location?.city || 'the selected location'}
     </h2>
     <p className="mt-2 text-sm text-black/55 dark:text-white/55">
-      We couldn't find any exact matches in {profile?.location?.city || 'your area'}.
+      We could not find any exact matches in {profile?.location?.city || 'your area'}.
       Try expanding your work preference or target roles to see more opportunities.
     </p>
   </section>
