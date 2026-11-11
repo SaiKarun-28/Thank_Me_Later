@@ -16,6 +16,7 @@ from app.section4_ranking_and_search.services.skills import calculate_candidate_
 from app.section4_ranking_and_search.services.locations import (
     is_location_eligible,
     is_nearby_location,
+    normalize_raw_location,
     freshness_classification,
     calculate_fit_score,
 )

@@ -26,7 +26,7 @@ export default function JobsPage() {
       Try expanding your work preference or target roles to see more opportunities.
     </p>
   </section>
-}{!isStreaming && !message && jobs.length > 0 && jobs.every(j => j.match_type === 'nearby') && (
+)}{!isStreaming && !message && jobs.length > 0 && jobs.every(j => j.match_type === 'nearby') && (
         <section className="surface mb-6 p-5 text-center text-sm text-amber-800 dark:text-amber-300">
           No exact matches found in {profile?.location?.city || 'your area'}, but here are some opportunities nearby.
         </section>
